@@ -12,7 +12,7 @@ import uuid
 from typing import Any
 
 from ..contracts import Decision, DecisionError, Observation
-from .questions import QUESTION_ID, build_question
+from .questions import BuiltQuestion, build_question
 
 BUILTIN_MODELS = {"english", "multilingual", "typed-decisions"}
 
@@ -92,9 +92,11 @@ class LayaDecider:
         latency_ms = (time.perf_counter() - t0) * 1000
 
         usage = dict(result.get("usage") or {}) if isinstance(result, dict) else {}
-        budget = self.head_budget(built.questions[QUESTION_ID])
-        if budget is not None:
-            usage["head_budget"] = budget
+        first = built.questions[built.move_qids[0]]
+        if first.get("type") == "choice":
+            budget = self.head_budget(first)
+            if budget is not None:
+                usage["head_budget"] = budget
 
         decision = Decision(
             decision_id=decision_id,
@@ -113,19 +115,53 @@ class LayaDecider:
             routing=result.get("routing") if isinstance(result, dict) else None,
             usage=usage,
         )
+        decision.aggregation = built.aggregation
         try:
-            answer = result["answers"][QUESTION_ID]
-            label = answer["choice"]
-            probs = answer["probabilities"]
-        except (KeyError, TypeError) as exc:
-            decision.error = f"unexpected laya response shape: missing {exc}"
-            return decision
-
-        decision.chosen_label = str(label)
-        decision.chosen_action_id = built.label_to_action.get(str(label))
-        decision.probabilities = {
-            built.label_to_action.get(str(k), f"<unknown:{k}>"): float(v) for k, v in probs.items()
-        }
-        decision.answer_confidence = answer.get("answer_confidence")
-        decision.confidence = answer.get("confidence")
+            self._read_answers(decision, built, result["answers"])
+        except (KeyError, TypeError, ValueError) as exc:
+            decision.error = f"unexpected laya response shape: {type(exc).__name__} {exc}"
         return decision
+
+    @staticmethod
+    def _read_answers(decision: Decision, built: BuiltQuestion, answers: dict) -> None:
+        to_action = built.label_to_action
+        if built.aggregation == "choice":
+            answer = answers[built.move_qids[0]]
+            label = str(answer["choice"])
+            probs = answer["probabilities"]
+            decision.chosen_label = label
+            decision.chosen_action_id = to_action.get(label)
+            decision.probabilities = {to_action.get(str(k), f"<unknown:{k}>"): float(v) for k, v in probs.items()}
+            decision.answer_confidence = answer.get("answer_confidence")
+            decision.confidence = answer.get("confidence")
+            return
+
+        if built.aggregation == "mean_choice":
+            labels = list(to_action)
+            per_view = [answers[qid]["probabilities"] for qid in built.move_qids]
+            mean = {l: sum(float(v[l]) for v in per_view) / len(per_view) for l in labels}
+            # Ties keep candidate order; the tie itself is recorded so it is never hidden.
+            label = max(labels, key=lambda l: mean[l])
+            decision.aggregate_detail = {
+                "views": len(per_view),
+                "view_choices": [str(answers[qid]["choice"]) for qid in built.move_qids],
+                "tie": sum(1 for l in labels if mean[l] == mean[label]) > 1,
+            }
+        elif built.aggregation == "noul_argmax":
+            labels = list(to_action)
+            p_true = {l: float(answers[l]["noul"]) for l in labels}
+            label = max(labels, key=lambda l: p_true[l])
+            total = sum(p_true.values()) or 1.0
+            mean = {l: p_true[l] / total for l in labels}
+            decision.aggregate_detail = {
+                "p_true": {to_action[l]: p_true[l] for l in labels},
+                "tie": sum(1 for l in labels if p_true[l] == p_true[label]) > 1,
+            }
+        else:
+            raise ValueError(f"unknown aggregation {built.aggregation!r}")
+
+        decision.chosen_label = label
+        decision.chosen_action_id = to_action[label]
+        decision.probabilities = {to_action[l]: round(mean[l], 6) for l in labels}
+        decision.answer_confidence = round(max(mean.values()), 6)
+        decision.confidence = None

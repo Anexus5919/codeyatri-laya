@@ -52,6 +52,8 @@ class Observation:
     state_text: str
     candidates: tuple[Candidate, ...]
     raw: Any
+    # General rules of good play for this game, stated once per game. Never a per-turn verdict.
+    priorities: str = ""
     extra: dict[str, Any] = field(default_factory=dict)
 
     @property
@@ -91,6 +93,8 @@ class Decision:
     latency_ms: float
     routing: dict[str, Any] | None = None
     usage: dict[str, Any] | None = None
+    aggregation: str = "choice"
+    aggregate_detail: dict[str, Any] | None = None
     error: str | None = None
 
     @property
