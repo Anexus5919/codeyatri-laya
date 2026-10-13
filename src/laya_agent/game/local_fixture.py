@@ -142,6 +142,12 @@ class CoinGridAdapter(GameAdapter):
 
     REQUIRED = ("turn", "done", "score", "width", "height", "player", "coin", "walls", "legal_actions", "steps_left")
 
+    def __init__(self, style: str = "words") -> None:
+        # "words" states the effect ("closer to the coin"); "numeric" gives only the distances.
+        if style not in ("words", "numeric"):
+            raise ValueError(f"unknown description style {style!r}")
+        self.style = style
+
     def observe(self, raw: Any) -> Observation:
         if not isinstance(raw, dict):
             raise StateValidationError("state is not an object")
@@ -180,7 +186,7 @@ class CoinGridAdapter(GameAdapter):
                 Candidate(
                     action_id=action,
                     payload={"action": action, "turn": raw["turn"]},
-                    description=f"move {action}: {trend}",
+                    description=f"move {action}: {trend}" if self.style == "words" else f"move {action}: coin distance {here} to {after} steps",
                     facts=facts,
                 )
             )

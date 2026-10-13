@@ -21,8 +21,8 @@ from laya_agent.decision.questions import DESIGNS
 from laya_agent.game.local_fixture import CoinGrid, CoinGridAdapter
 
 
-def probe_set(n_seeds: int):
-    adapter = CoinGridAdapter()
+def probe_set(n_seeds: int, style: str = "words"):
+    adapter = CoinGridAdapter(style)
     probes = []
     for seed in range(n_seeds):
         obs = adapter.observe(CoinGrid(seed=seed).state())
@@ -44,16 +44,17 @@ def main() -> int:
     ap.add_argument("--device", default=None)
     ap.add_argument("--seeds", type=int, default=60)
     ap.add_argument("--designs", default=",".join(DESIGNS))
+    ap.add_argument("--style", default="words", choices=["words", "numeric"], help="fixture description style")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
-    probes = probe_set(args.seeds)
+    probes = probe_set(args.seeds, args.style)
     chance = statistics.mean(len(g) / len(o.candidates) for _, o, g in probes)
     decider = LayaDecider(args.model, args.device, "facts_v1")
     load_info = decider.load()
     print(f"model={args.model} probes={len(probes)} chance={chance:.3f} load={load_info}", flush=True)
 
-    results = {"model": args.model, "load": load_info, "probes": len(probes), "chance_accuracy": round(chance, 4), "designs": {}}
+    results = {"model": args.model, "style": args.style, "load": load_info, "probes": len(probes), "chance_accuracy": round(chance, 4), "designs": {}}
     for design_id in args.designs.split(","):
         decider.design_id = design_id
         rows = []
@@ -67,6 +68,7 @@ def main() -> int:
                 "chosen": fwd.chosen_action_id,
                 "chosen_reversed": rev.chosen_action_id,
                 "p_good": round(sum(p for a, p in fwd.probabilities.items() if a in good), 4),
+                "p_true": (fwd.aggregate_detail or {}).get("p_true"),
                 "answer_confidence": fwd.answer_confidence,
                 "latency_ms": round(fwd.latency_ms, 1),
                 "error": fwd.error or rev.error,
