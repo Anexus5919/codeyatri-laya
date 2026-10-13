@@ -89,3 +89,19 @@ def follow(path: str | Path, poll_s: float = 0.25) -> None:
                     print(render(json.loads(line)), flush=True)
                 except json.JSONDecodeError:
                     pass
+
+
+def main() -> None:
+    import argparse
+
+    ap = argparse.ArgumentParser(description="Follow a decision log in the terminal")
+    ap.add_argument("log", nargs="?", default="logs", help="a .jsonl log, or a folder to follow its newest log")
+    args = ap.parse_args()
+    try:
+        follow(args.log)
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == "__main__":
+    main()
