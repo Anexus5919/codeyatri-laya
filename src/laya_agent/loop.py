@@ -98,6 +98,8 @@ class GameLoop:
                     {"action_id": c.action_id, "description": c.description, "facts": c.facts} for c in obs.candidates
                 ],
                 design_id=decision.design_id,
+                aggregation=decision.aggregation,
+                aggregate_detail=decision.aggregate_detail,
                 model=decision.model,
                 question=decision.question,
                 label_to_action=decision.label_to_action,
