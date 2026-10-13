@@ -53,3 +53,24 @@ Chance (uniform over legal moves): 0.526.
 - Caveat: the descriptions use the same words as the priorities ("closer", "farther"). E2 checks whether Laya still reads plain numbers.
 - Decision: keep `noul_each_v1` as the starting design. Cost: one question per legal move (32 max per call) and higher CPU latency.
 - Evidence: `docs/evidence/design_eval_english_cpu.json`.
+
+## E2: Does Laya read numbers, or only matching words?
+
+- 2026-10-13, LOCAL FIXTURE, `english`, CPU. Same 54 probe states as E1.
+- Hypothesis: if E1's 1.000 came from word matching ("closer" in both priorities and option), numeric-only descriptions will drop `noul_each_v1` towards chance.
+- Variable: description style. Words ("move up: closer to the coin (3 to 2 steps)") versus numbers only ("move up: coin distance 3 to 2 steps").
+
+| design | words: accuracy | numbers: accuracy | numbers: order agreement | numbers: mean P(good) |
+|---|---|---|---|---|
+| goal_v1 | 0.667 | 0.667 | 0.833 | 0.596 |
+| opaque_v1 | 0.685 | 0.667 | 0.759 | 0.608 |
+| noul_each_v1 | 1.000 | **0.963** | 1.000 | 0.575 (words: 0.730) |
+
+- Per-move P(true) with numbers: good moves median 0.605 (range 0.471 to 0.729), bad moves median 0.479 (range 0.345 to 0.667). Best good minus best bad, per state: median +0.118, worst -0.116.
+- Failures: seed 13 (picked `left` 0.612 over good `right` 0.565) and seed 25 (picked `left` 0.667 over good `up`/`down` near 0.55).
+- Interpretation:
+  - Laya does read the numbers: 0.963 without any matching words, still far above chance (0.526) and above every `choice` design.
+  - Stating the effect in words that mirror the priorities widens the margin (mean P(good) 0.73 versus 0.575) and removed both failures.
+  - P(true) is only meaningful **within** a state. Values overlap across states, so a fixed threshold would be wrong. Reading probabilities here means ranking, not gating.
+- Decision: default design `noul_each_v1`. Adapter rule for hackathon day: each move's description states its effect in plain words that mirror the priorities, then the number.
+- Evidence: `docs/evidence/design_eval_english_cpu_numeric.json`.
