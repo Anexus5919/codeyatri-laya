@@ -135,6 +135,10 @@ class LocalFixtureClient(GameClient):
 class CoinGridAdapter(GameAdapter):
     game_id = "fixture-coin-grid"
     objective = "Collect as many coins as possible before the steps run out."
+    priorities = (
+        "Collecting the coin is best; otherwise prefer a move that gets closer to the coin "
+        "and avoid a move that gets farther from it."
+    )
 
     REQUIRED = ("turn", "done", "score", "width", "height", "player", "coin", "walls", "legal_actions", "steps_left")
 
@@ -195,6 +199,7 @@ class CoinGridAdapter(GameAdapter):
             state_text=state_text,
             candidates=tuple(candidates),
             raw=raw,
+            priorities=self.priorities,
         )
         obs.check_candidates()
         return obs
