@@ -46,7 +46,7 @@ class Settings:
     device: str | None = None
     head_max_len: int | None = None
     max_len: int | None = None
-    question_design: str = "facts_v1"
+    question_design: str = "noul_each_v1"
 
     game_base_url: str = ""
     game_token: str = field(default="", repr=False)
@@ -72,7 +72,7 @@ class Settings:
             device=_str("BOT_DEVICE") or None,
             head_max_len=_opt_int("BOT_HEAD_MAX_LEN"),
             max_len=_opt_int("BOT_MAX_LEN"),
-            question_design=_str("BOT_QUESTION_DESIGN", "facts_v1"),
+            question_design=_str("BOT_QUESTION_DESIGN", "noul_each_v1"),
             game_base_url=_str("BOT_GAME_BASE_URL"),
             game_token=_str("BOT_GAME_TOKEN"),
             game_auth_header=_str("BOT_GAME_AUTH_HEADER", "Authorization"),
