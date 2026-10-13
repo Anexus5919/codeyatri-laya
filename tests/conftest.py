@@ -33,24 +33,30 @@ class FakeRouter:
             raise self.raises
         if self.response is not None:
             return self.response
-        qid, q = next(iter(questions.items()))
-        crit = q["criteria"]
-        labels = list(crit if isinstance(crit, list) else crit.keys())
-        chosen = self.pick(labels)
-        rest = (1.0 - 0.7) / max(1, len(labels) - 1) if len(labels) > 1 else 0.0
-        probs = {l: (0.7 if l == chosen else rest) for l in labels} if len(labels) > 1 else {chosen: 1.0}
+        answers = {}
+        noul_qids = [qid for qid, q in questions.items() if q["type"] == "noul"]
+        noul_pick = self.pick(noul_qids) if noul_qids else None
+        for qid, q in questions.items():
+            if q["type"] == "noul":
+                p = 0.8 if qid == noul_pick else 0.3
+                answers[qid] = {"type": "noul", "noul": p, "confidence": max(p, 1 - p), "answer_confidence": max(p, 1 - p), "action": {"act_probability": 1.0}}
+                continue
+            crit = q["criteria"]
+            labels = list(crit if isinstance(crit, list) else crit.keys())
+            chosen = self.pick(labels)
+            rest = (1.0 - 0.7) / max(1, len(labels) - 1) if len(labels) > 1 else 0.0
+            probs = {l: (0.7 if l == chosen else rest) for l in labels} if len(labels) > 1 else {chosen: 1.0}
+            answers[qid] = {
+                "type": "choice",
+                "choice": chosen,
+                "probabilities": probs,
+                "confidence": 0.5,
+                "answer_confidence": max(probs.values()),
+                "action": {"act_probability": 1.0},
+            }
         return {
             "model": "laya-rl-agent",
-            "answers": {
-                qid: {
-                    "type": "choice",
-                    "choice": chosen,
-                    "probabilities": probs,
-                    "confidence": 0.5,
-                    "answer_confidence": max(probs.values()),
-                    "action": {"act_probability": 1.0},
-                }
-            },
+            "answers": answers,
             "usage": {"input_tokens": 100, "output_tokens": 0, "state_tokens": 40, "state_tokens_dropped": 0, "truncated": False, "truncated_questions": []},
             "routing": {"model": kwargs.get("model"), "reason": "explicit model"},
         }

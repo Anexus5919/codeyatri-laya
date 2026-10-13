@@ -16,8 +16,9 @@ def obs(actions=("up", "left", "right")):
 def test_every_design_offers_exactly_the_legal_candidates(design_id):
     built = build_question(design_id, obs())
     assert sorted(built.label_to_action.values()) == ["left", "right", "up"]
-    q = built.questions["move"]
-    assert q["type"] == "choice" and q["instructions"]
+    assert set(built.move_qids) <= set(built.questions)
+    for q in built.questions.values():
+        assert q["type"] in ("choice", "noul") and q["instructions"]
 
 
 def test_opaque_design_hides_action_names_from_labels():
@@ -77,3 +78,22 @@ def test_bad_probabilities_and_collapsed_options_are_rejected():
     d = LayaDecider(router=FakeRouter()).decide(obs())
     d.usage = {"options": {"move": {"total": 3, "distinct": 2}}}
     assert any("collapsed" in p for p in validate_decision(d, obs()))
+
+
+def test_rotation_design_asks_every_cyclic_order_in_one_call_and_averages():
+    router = FakeRouter(pick=lambda labels: "left")
+    d = LayaDecider(design_id="rot_v1", router=router).decide(obs())
+    assert len(router.calls) == 1
+    asked = router.calls[0][1]
+    assert sorted(q["option_order"] for q in asked.values()) == [[0, 1, 2], [1, 2, 0], [2, 0, 1]]
+    assert d.aggregation == "mean_choice" and d.chosen_action_id == "left"
+    assert d.aggregate_detail["views"] == 3 and validate_decision(d, obs()) == []
+
+
+def test_noul_design_picks_the_highest_p_true_and_logs_it():
+    router = FakeRouter(pick=lambda qids: qids[2])
+    d = LayaDecider(design_id="noul_each_v1", router=router).decide(obs())
+    assert len(router.calls) == 1
+    assert d.aggregation == "noul_argmax" and d.chosen_action_id == "right"
+    assert d.aggregate_detail["p_true"]["right"] == 0.8
+    assert validate_decision(d, obs()) == []
