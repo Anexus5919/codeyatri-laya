@@ -29,3 +29,6 @@ logs/*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Hackathon submission deck and its local tooling (kept out of the public repo)
+presentation/
