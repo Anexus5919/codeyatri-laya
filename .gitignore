@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Model caches and checkpoints
+.cache/
+hf_cache/
+checkpoints/
+*.safetensors
+*.onnx
+
+# Runtime logs (best runs are copied to runs/ on purpose)
+logs/*
+!logs/.gitkeep
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
