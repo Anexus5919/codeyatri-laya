@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laya Decision Viewer</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1b1f24; --mute:#5b6470; --line:#dde1e6; --accent:#2f6fde; --ok:#1f8a4c; --bad:#c23b3b; --warn:#b26b00; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#121417; --card:#1b1e23; --ink:#e7eaee; --mute:#9aa3ad; --line:#2c3138; --accent:#6c9cf0; --ok:#4cc184; --bad:#f07070; --warn:#f0b450; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; }
+  header { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
+  h1 { font-size:16px; margin:0; }
+  .badge { padding:2px 8px; border-radius:10px; font-size:12px; font-weight:600; border:1px solid currentColor; }
+  .fixture { color:var(--warn); } .hosted { color:var(--ok); }
+  main { padding:16px; display:grid; gap:16px; grid-template-columns: minmax(0,1fr); max-width:1200px; margin:0 auto; }
+  @media (min-width: 900px) { main { grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px; min-width:0; }
+  .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--mute); margin:0 0 10px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:10px; }
+  .stat b { display:block; font-size:20px; font-variant-numeric:tabular-nums; }
+  .stat span { color:var(--mute); font-size:12px; }
+  .row { display:grid; grid-template-columns: minmax(70px,140px) minmax(0,1fr) 64px; gap:8px; align-items:center; margin:4px 0; }
+  .track { height:12px; background:var(--line); border-radius:6px; overflow:hidden; }
+  .fill { height:100%; background:var(--mute); }
+  .chosen .fill { background:var(--accent); } .chosen .lbl { font-weight:700; color:var(--accent); }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .desc { color:var(--mute); font-size:12px; margin:0 0 6px; overflow-wrap:anywhere; }
+  pre { white-space:pre-wrap; overflow-wrap:anywhere; background:var(--bg); padding:8px; border-radius:6px; margin:6px 0; font-size:12px; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  td, th { border-bottom:1px solid var(--line); padding:4px 6px; text-align:left; vertical-align:top; overflow-wrap:anywhere; }
+  .feed { max-height:520px; overflow:auto; }
+  .ok { color:var(--ok); } .bad { color:var(--bad); }
+  .mute { color:var(--mute); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Laya Decision Viewer</h1>
+  <span id="env" class="badge">waiting</span>
+  <span class="mute" id="meta"></span>
+</header>
+<main>
+  <section class="card" style="grid-column:1/-1">
+    <h2>Run</h2>
+    <div class="stats">
+      <div class="stat"><b id="s-dec">0</b><span>Laya decisions</span></div>
+      <div class="stat"><b id="s-acc">0</b><span>moves accepted</span></div>
+      <div class="stat"><b id="s-rej">0</b><span>rejected / failed</span></div>
+      <div class="stat"><b id="s-score">-</b><span>score</span></div>
+      <div class="stat"><b id="s-lat">-</b><span>p50 latency ms</span></div>
+      <div class="stat"><b id="s-status">running</b><span>status</span></div>
+    </div>
+  </section>
+  <section class="card">
+    <h2>Latest decision</h2>
+    <div id="latest" class="mute">No decision yet.</div>
+  </section>
+  <section class="card">
+    <h2>Event feed</h2>
+    <div class="feed"><table><thead><tr><th>#</th><th>type</th><th>turn</th><th>detail</th></tr></thead><tbody id="feed"></tbody></table></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let after = 0, decisions = 0, accepted = 0, failed = 0, lat = [];
+
+function el(tag, attrs, text) {
+  const n = document.createElement(tag);
+  if (attrs) for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+
+function renderDecision(e) {
+  const box = $("latest"); box.replaceChildren(); box.className = "";
+  box.append(el("div", {class: "mute"}, `turn ${e.turn_id} | design ${e.design_id} | model ${e.model} | ${e.latency_ms} ms | ${e.valid ? "valid" : "INVALID"}`));
+  const q = e.question && e.question.move ? e.question.move : {};
+  box.append(el("pre", null, "Q: " + (q.instructions || "")));
+  const descs = {}; (e.candidates || []).forEach(c => descs[c.action_id] = c.description);
+  const probs = Object.entries(e.probabilities || {}).sort((a, b) => b[1] - a[1]);
+  for (const [a, p] of probs) {
+    const row = el("div", {class: "row" + (a === e.chosen_action_id ? " chosen" : "")});
+    row.append(el("span", {class: "lbl"}, a));
+    const track = el("div", {class: "track"}); const fill = el("div", {class: "fill"});
+    fill.style.width = (p * 100).toFixed(1) + "%"; track.append(fill); row.append(track);
+    row.append(el("span", {class: "num"}, p.toFixed(4)));
+    box.append(row);
+    if (descs[a]) box.append(el("p", {class: "desc"}, descs[a]));
+  }
+  box.append(el("div", {class: "mute"}, `answer_confidence ${e.answer_confidence} | confidence ${e.confidence}`));
+  box.append(el("pre", null, "State: " + (e.state_text || "")));
+  if (e.validation_problems && e.validation_problems.length) box.append(el("pre", {class: "bad"}, e.validation_problems.join("\n")));
+}
+
+function detail(e) {
+  switch (e.type) {
+    case "decision": return `chose ${e.chosen_action_id} p=${(e.probabilities||{})[e.chosen_action_id]} id=${(e.decision_id||"").slice(0,8)}`;
+    case "submission": return `${e.action_id} -> ${e.status} ${e.detail || ""}`;
+    case "game_over": return `score ${e.score}`;
+    case "run_end": return `${e.status} score=${e.final_score} ${e.reason || ""}`;
+    case "pause": return e.reason;
+    case "state_invalid": return e.error;
+    default: return "";
+  }
+}
+
+function handle(e) {
+  if (e.type === "run_start") {
+    const fixture = e.env !== "HOSTED";
+    $("env").textContent = fixture ? "LOCAL FIXTURE - not a verified run" : "HOSTED";
+    $("env").className = "badge " + (fixture ? "fixture" : "hosted");
+    $("meta").textContent = `run ${e.run_id} | game ${e.game_id} | design ${e.design_id}`;
+  }
+  if (e.type === "decision") { decisions++; lat.push(e.latency_ms); if (!e.valid) failed++; renderDecision(e); }
+  if (e.type === "decision_rejected" && !e.decision_id) failed++;
+  if (e.type === "submission") { if (e.status === "accepted") accepted++; else failed++; }
+  if (e.type === "game_over") $("s-score").textContent = e.score;
+  if (e.type === "run_end") { $("s-status").textContent = e.status; if (e.final_score != null) $("s-score").textContent = e.final_score; }
+  if (e.type === "pause") $("s-status").textContent = "paused";
+  const tr = el("tr");
+  const cls = e.type === "pause" || e.type === "state_invalid" || (e.type === "submission" && e.status !== "accepted") ? "bad" : (e.type === "game_over" ? "ok" : "");
+  tr.append(el("td", null, e.seq), el("td", {class: cls}, e.type), el("td", null, e.turn_id ?? ""), el("td", null, detail(e)));
+  $("feed").prepend(tr);
+}
+
+async function poll() {
+  try {
+    const r = await fetch(`/events?after=${after}`);
+    const data = await r.json();
+    for (const e of data.events) { handle(e); after = Math.max(after, e.seq || 0); }
+    $("s-dec").textContent = decisions; $("s-acc").textContent = accepted; $("s-rej").textContent = failed;
+    if (lat.length) { const s = [...lat].sort((a, b) => a - b); $("s-lat").textContent = s[Math.floor(s.length / 2)]; }
+  } catch (err) { /* viewer retries on the next tick */ }
+  setTimeout(poll, 500);
+}
+poll();
+</script>
+</body>
+</html>
