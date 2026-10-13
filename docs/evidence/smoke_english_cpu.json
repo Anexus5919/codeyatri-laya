@@ -1,0 +1,70 @@
+{
+  "python": "3.12.3",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "laya_version": "0.4.6",
+  "torch": "2.14.1+cpu",
+  "cuda_available": false,
+  "import_s": 1.27,
+  "cold_load_s": 236.96,
+  "device": "cpu",
+  "revisions": {
+    "english": "7b928d828b7b0e022f929d9bd2e44165aa270148"
+  },
+  "first_call_ms": 420.2,
+  "result": {
+    "model": "laya-rl-agent",
+    "answers": {
+      "move": {
+        "type": "choice",
+        "choice": "left",
+        "probabilities": {
+          "up": 0.1839,
+          "down": 0.2509,
+          "left": 0.4169,
+          "right": 0.1483
+        },
+        "confidence": 0.0578,
+        "answer_confidence": 0.4169,
+        "action": {
+          "act_probability": 1.0
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 116,
+      "output_tokens": 0,
+      "state_tokens": 35,
+      "state_tokens_dropped": 0,
+      "truncated": false,
+      "truncated_questions": []
+    },
+    "routing": {
+      "model": "english",
+      "repo": "convaiinnovations/laya",
+      "reason": "explicit model='english'",
+      "detection": null,
+      "workflow": null
+    }
+  },
+  "warm_ms": {
+    "n": 10,
+    "p50": 395.0,
+    "max": 448.5
+  },
+  "deterministic": true,
+  "reversed_order": {
+    "type": "choice",
+    "choice": "right",
+    "probabilities": {
+      "up": 0.1728,
+      "down": 0.2415,
+      "left": 0.2636,
+      "right": 0.3221
+    },
+    "confidence": 0.0169,
+    "answer_confidence": 0.3221,
+    "action": {
+      "act_probability": 1.0
+    }
+  }
+}
