@@ -19,12 +19,14 @@
 - [ ] Copy `src/laya_agent/game/hosted_template.py` to `src/laya_agent/game/<game>.py`.
 - [ ] Fill every UNRESOLVED: paths, request bodies, turn field, idempotency header (send `decision_id` if supported), `reconcile` using the turn counter.
 - [ ] `observe()`: validate required fields, read legal moves from the server (authoritative), build `Candidate`s with the exact API payload, write short factual descriptions with the decisive fact first, set `objective` and `priorities`.
+- [ ] Description rule from E2: state each move's effect in plain words that mirror the priorities, then the number (for example "closer to the exit (6 to 5 steps)"). Facts only, never "best" or "recommended".
 - [ ] Register the game in `run.py:build_game`.
 - [ ] Unit test `observe()` on the captured fixtures, including a terminal state.
 
 ## 3. Question design
 
-- [ ] Check `usage.head_budget.cut` and `usage.truncated` on real states; shorten descriptions if anything is cut.
+- [ ] Start from `noul_each_v1` (E1, E2). One question per legal move, 32 at most per call.
+- [ ] Check `usage.truncated` on real states (and `usage.head_budget.cut` for choice designs); shorten descriptions if anything is cut.
 - [ ] Run each candidate design on the same captured states; record results in `docs/experiments.md`.
 - [ ] More than about 20 legal moves: split the question or use laya's shortlist or tournament helpers, and log every stage.
 

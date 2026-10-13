@@ -12,6 +12,13 @@ Laya answers `choice`, `score` and yes/no (`noul`) questions in one forward pass
 
 It is not a game engine. Out of the box it is weak at decisions: in our first test it gave the *correct* move the *lowest* probability, and reversing the option order flipped its answer. How we phrase the state, the options and the questions is the main lever, and `docs/experiments.md` records what we tried and what changed.
 
+Offline, on 54 fixed test states (chance 0.53):
+
+| How we asked | Picked a good move |
+|---|---|
+| One `choice` question over all moves (best of five wordings) | 0.61 to 0.69 |
+| One yes/no question per move, same forward pass (current default) | 1.00 (0.96 with numbers only) |
+
 ## How a move is made
 
 ```mermaid
