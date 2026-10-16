@@ -48,3 +48,4 @@ frontend/node_modules/
 
 # Doom screen captures for the dashboard (large; the log, events and demo recording ARE committed)
 runs/doom/*.frames/
+_vizdoom.ini
