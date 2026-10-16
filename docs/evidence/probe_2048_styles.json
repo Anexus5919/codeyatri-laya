@@ -1,0 +1,48 @@
+{
+ "n": 150,
+ "results": {
+  "v3": {
+   "accuracy": 0.513,
+   "corner_lost_picks": 9,
+   "pick_share": {
+    "right": 0.11,
+    "up": 0.26,
+    "down": 0.32,
+    "left": 0.31
+   },
+   "ms_per_state": 94.6
+  },
+  "v3s": {
+   "accuracy": 0.473,
+   "corner_lost_picks": 1,
+   "pick_share": {
+    "right": 0.04,
+    "down": 0.37,
+    "left": 0.26,
+    "up": 0.33
+   },
+   "ms_per_state": 83.8
+  },
+  "v3n": {
+   "accuracy": 0.42,
+   "corner_lost_picks": 26,
+   "pick_share": {
+    "left": 0.31,
+    "up": 0.32,
+    "down": 0.18,
+    "right": 0.19
+   },
+   "ms_per_state": 84.6
+  },
+  "v3c": {
+   "accuracy": 0.387,
+   "corner_lost_picks": 0,
+   "pick_share": {
+    "up": 0.59,
+    "down": 0.36,
+    "left": 0.05
+   },
+   "ms_per_state": 82.0
+  }
+ }
+}

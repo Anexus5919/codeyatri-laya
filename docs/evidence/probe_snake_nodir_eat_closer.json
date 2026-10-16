@@ -1,0 +1,18 @@
+{
+ "chance": 0.45999999999999996,
+ "n": 200,
+ "results": {
+  "noul_nodir": {
+   "accuracy": 0.965,
+   "fatal_picks": 0,
+   "missed_eats": 6,
+   "pick_share": {
+    "down": 0.26,
+    "left": 0.17,
+    "up": 0.44,
+    "right": 0.12
+   },
+   "ms_per_state": 73.4
+  }
+ }
+}

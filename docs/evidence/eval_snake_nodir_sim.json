@@ -1,0 +1,137 @@
+{
+ "summary": {
+  "game": "snake",
+  "template": "noul_nodir",
+  "games": 10,
+  "points_mean": 918,
+  "points_median": 1000.0,
+  "points_min": 180,
+  "points_max": 1000,
+  "fallback_share_max": 0.0,
+  "all_logs_verify": true,
+  "unlock_rate_600": 0.9,
+  "wins": 9
+ },
+ "rows": [
+  {
+   "seed": 100,
+   "points": 1000,
+   "won": true,
+   "steps": 153,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 18.5,
+   "foods": 15
+  },
+  {
+   "seed": 101,
+   "points": 1000,
+   "won": true,
+   "steps": 142,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 15.5,
+   "foods": 15
+  },
+  {
+   "seed": 102,
+   "points": 1000,
+   "won": true,
+   "steps": 132,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 13.6,
+   "foods": 15
+  },
+  {
+   "seed": 103,
+   "points": 180,
+   "won": false,
+   "steps": 300,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 38.6,
+   "foods": 3
+  },
+  {
+   "seed": 104,
+   "points": 1000,
+   "won": true,
+   "steps": 119,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 17.0,
+   "foods": 15
+  },
+  {
+   "seed": 105,
+   "points": 1000,
+   "won": true,
+   "steps": 127,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 18.2,
+   "foods": 15
+  },
+  {
+   "seed": 106,
+   "points": 1000,
+   "won": true,
+   "steps": 153,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 22.4,
+   "foods": 15
+  },
+  {
+   "seed": 107,
+   "points": 1000,
+   "won": true,
+   "steps": 146,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 21.3,
+   "foods": 15
+  },
+  {
+   "seed": 108,
+   "points": 1000,
+   "won": true,
+   "steps": 131,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 19.5,
+   "foods": 15
+  },
+  {
+   "seed": 109,
+   "points": 1000,
+   "won": true,
+   "steps": 112,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 16.5,
+   "foods": 15
+  }
+ ],
+ "load": {
+  "laya_version": "0.4.6",
+  "model": "english",
+  "device": "cuda",
+  "load_s": 12.52,
+  "revision": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+  "template": "noul_nodir",
+  "offer": "legal",
+  "style": "words"
+ }
+}

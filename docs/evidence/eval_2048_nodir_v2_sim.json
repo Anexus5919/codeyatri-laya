@@ -1,0 +1,103 @@
+{
+ "summary": {
+  "game": "2048",
+  "template": "noul_nodir",
+  "games": 6,
+  "points_mean": 168.2,
+  "points_median": 144.0,
+  "points_min": 1,
+  "points_max": 288,
+  "fallback_share_max": 0.0,
+  "all_logs_verify": true,
+  "best_tiles": {
+   "64": 1,
+   "128": 3,
+   "256": 2
+  },
+  "reach_512_rate": 0.0
+ },
+ "rows": [
+  {
+   "seed": 100,
+   "points": 144,
+   "won": false,
+   "steps": 185,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 28.4,
+   "best_tile": 128,
+   "score": 1816
+  },
+  {
+   "seed": 101,
+   "points": 288,
+   "won": false,
+   "steps": 208,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 31.8,
+   "best_tile": 256,
+   "score": 2448
+  },
+  {
+   "seed": 102,
+   "points": 144,
+   "won": false,
+   "steps": 207,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 32.0,
+   "best_tile": 128,
+   "score": 1984
+  },
+  {
+   "seed": 103,
+   "points": 288,
+   "won": false,
+   "steps": 244,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 38.9,
+   "best_tile": 256,
+   "score": 2864
+  },
+  {
+   "seed": 104,
+   "points": 144,
+   "won": false,
+   "steps": 170,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 18.4,
+   "best_tile": 128,
+   "score": 1628
+  },
+  {
+   "seed": 105,
+   "points": 1,
+   "won": false,
+   "steps": 142,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 12.6,
+   "best_tile": 64,
+   "score": 1240
+  }
+ ],
+ "load": {
+  "laya_version": "0.4.6",
+  "model": "english",
+  "device": "cuda",
+  "load_s": 13.43,
+  "revision": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+  "template": "noul_nodir",
+  "offer": "legal",
+  "style": "v2"
+ }
+}

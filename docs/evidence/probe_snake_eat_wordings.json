@@ -1,0 +1,54 @@
+{
+ "chance": 0.3333333333333333,
+ "n": 120,
+ "results": {
+  "noul_nodir/words": {
+   "accuracy": 0.958,
+   "fatal_picks": 0,
+   "missed_eats": 5,
+   "pick_share": {
+    "down": 0.27,
+    "left": 0.28,
+    "up": 0.25,
+    "right": 0.21
+   },
+   "ms_per_state": 147.3
+  },
+  "noul_nodir/eat_best": {
+   "accuracy": 0.942,
+   "fatal_picks": 0,
+   "missed_eats": 7,
+   "pick_share": {
+    "down": 0.24,
+    "left": 0.28,
+    "up": 0.28,
+    "right": 0.21
+   },
+   "ms_per_state": 141.1
+  },
+  "noul_nodir/eat_reach": {
+   "accuracy": 0.967,
+   "fatal_picks": 0,
+   "missed_eats": 4,
+   "pick_share": {
+    "down": 0.27,
+    "left": 0.27,
+    "up": 0.24,
+    "right": 0.23
+   },
+   "ms_per_state": 139.7
+  },
+  "noul_nodir/eat_goal": {
+   "accuracy": 0.192,
+   "fatal_picks": 0,
+   "missed_eats": 97,
+   "pick_share": {
+    "down": 0.17,
+    "left": 0.37,
+    "up": 0.33,
+    "right": 0.13
+   },
+   "ms_per_state": 157.7
+  }
+ }
+}

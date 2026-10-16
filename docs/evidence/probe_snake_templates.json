@@ -1,0 +1,42 @@
+{
+ "chance": 0.45999999999999996,
+ "n": 200,
+ "results": {
+  "noul_v1": {
+   "accuracy": 0.61,
+   "fatal_picks": 0,
+   "missed_eats": 8,
+   "pick_share": {
+    "right": 0.3,
+    "down": 0.14,
+    "left": 0.27,
+    "up": 0.29
+   },
+   "ms_per_state": 72.3
+  },
+  "noul_nodir": {
+   "accuracy": 0.91,
+   "fatal_picks": 0,
+   "missed_eats": 17,
+   "pick_share": {
+    "down": 0.26,
+    "up": 0.45,
+    "right": 0.13,
+    "left": 0.17
+   },
+   "ms_per_state": 96.9
+  },
+  "noul_nodir_short": {
+   "accuracy": 0.655,
+   "fatal_picks": 43,
+   "missed_eats": 10,
+   "pick_share": {
+    "down": 0.31,
+    "left": 0.17,
+    "right": 0.2,
+    "up": 0.33
+   },
+   "ms_per_state": 108.2
+  }
+ }
+}
