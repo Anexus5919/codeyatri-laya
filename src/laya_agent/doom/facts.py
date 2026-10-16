@@ -259,8 +259,8 @@ OPPOSITE = {"turn_left": "turn_right", "turn_right": "turn_left", "turn_left_big
 
 
 def state_text(s: Scene) -> str:
-    parts = [f"Doom. Health {s.health}, armor {s.armor}, {WEAPONS.get(s.weapon, 'weapon')}"
-             + ("" if s.weapon <= 1 else f" with {s.ammo} rounds") + f", {s.kills} kills."]
+    gun = "no weapon" if s.weapon < 0 else WEAPONS.get(s.weapon, "weapon") + ("" if s.weapon <= 1 else f" with {s.ammo} rounds")
+    parts = [f"Doom. Health {s.health}, armor {s.armor}, {gun}, {s.kills} kills."]
     seen = sorted((e for e in s.enemies if e.visible), key=lambda e: abs(e.bearing))[:3]
     unseen = sorted((e for e in s.enemies if not e.visible), key=lambda e: e.dist)[:2]
     parts.append("Enemies in view: " + ("; ".join(f"{e.name} {where(e.bearing)}, {round(e.dist)} units" for e in seen)
@@ -293,6 +293,8 @@ def _faces(s: Scene, act: str) -> str:
 def _shoot(s: Scene) -> ActFact:
     w = WEAPONS.get(s.weapon, "weapon")
     e = s.aimed
+    if s.weapon < 0:
+        return ActFact("shoot", "pulls the trigger, but you carry no weapon here: nothing happens.", data={"hits": False})
     if s.weapon <= 1:
         if e and e.dist <= 64:
             return ActFact("shoot", f"swings the {w} at the {e.name} in the crosshair, {round(e.dist)} units away: it hits.",

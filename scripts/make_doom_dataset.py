@@ -23,8 +23,8 @@ from laya_agent.doom.facts import CRITERIA, Perceiver, facts, questions, reader_
 
 MAPS1 = [f"freedoom1:E1M{i}" for i in range(1, 10)]
 MAPS2 = [f"freedoom2:MAP0{i}" for i in range(1, 9)]
-SCENARIOS = {"defend_the_center": 4, "defend_the_line": 4, "deadly_corridor": 6, "deathmatch": 3,
-             "health_gathering_supreme": 2, "my_way_home": 4, "basic": 3, "take_cover": 2}
+SCENARIOS = {"defend_the_center": 6, "defend_the_line": 6, "deadly_corridor": 8, "deathmatch": 6,
+             "health_gathering_supreme": 2, "my_way_home": 3, "basic": 6, "take_cover": 2}
 
 
 def episodes(seed0: int) -> list[dict]:
@@ -84,7 +84,8 @@ def main() -> None:
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--holdout-frac", type=float, default=0.15)
     ap.add_argument("--keep", type=float, default=0.35, help="share of decisions kept per game")
-    ap.add_argument("--shoot-keep", type=float, default=0.3, help="extra thinning of rows whose answer is shoot")
+    ap.add_argument("--shoot-keep", type=float, default=0.6, help="extra thinning of rows whose answer is shoot")
+    ap.add_argument("--forward-keep", type=float, default=0.5, help="extra thinning of rows whose answer is forward")
     ap.add_argument("--seed", type=int, default=1993)
     args = ap.parse_args()
 
@@ -100,7 +101,8 @@ def main() -> None:
     for res in results:
         bucket = hold if rng.random() < args.holdout_frac else train
         for row in res["rows"]:
-            keep = args.keep * (args.shoot_keep if row["meta"]["best"] == ["shoot"] else 1.0)
+            best = row["meta"]["best"]
+            keep = args.keep * (args.shoot_keep if best == ["shoot"] else args.forward_keep if best == ["forward"] else 1.0)
             if rng.random() > keep:
                 continue
             key = (row["state"], tuple(sorted((k, v["instructions"]) for k, v in row["questions"].items())))

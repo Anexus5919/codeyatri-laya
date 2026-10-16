@@ -138,7 +138,9 @@ class DoomEnv:
                 "secrets": int(g.get_game_variable(GV.SECRETCOUNT)), "health": int(g.get_game_variable(GV.HEALTH))}
 
     def close(self) -> None:
-        self.game.close()
+        if not getattr(self, "_closed", False):
+            self._closed = True
+            self.game.close()
 
 
 def replay(scenario: str, record_path: str, skill: int = 3, seed: int = 0) -> dict:

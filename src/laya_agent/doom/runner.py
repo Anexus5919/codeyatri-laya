@@ -129,6 +129,7 @@ def play_episode(env: DoomEnv, decider: DoomDecider, runs_dir: str | Path, agent
                       f"kills {before['kills']:3d}  laya {dec.laya_ms:5.0f} ms  reward {reward:+.2f}", flush=True)
     finally:
         outcome = env.outcome()
+        env.close()  # the engine finishes writing the demo recording on close, so hash it only after this
         log.close()
         report = verify_log(folder / f"{sid}.jsonl", keys=ACTIONS) if step else {"ok": False, "problems": ["no moves"]}
         final = {"session_id": sid, "game": "doom", "agent_name": agent_name, "steps": step, **outcome,
