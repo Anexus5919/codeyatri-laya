@@ -56,23 +56,45 @@ def sha256_file(path: Path) -> str:
 
 
 class FrameSaver:
+    """Writes screen captures on a background thread, so encoding a JPEG never delays a decision."""
+
     def __init__(self, folder: Path, every: int = 1):
+        import queue
+        import threading
+
         from PIL import Image  # only needed when frames are kept
 
         self.Image = Image
         self.folder = folder
         self.every = every
         folder.mkdir(parents=True, exist_ok=True)
+        self.q: "queue.Queue" = queue.Queue(maxsize=64)
+        self.worker = threading.Thread(target=self._run, daemon=True)
+        self.worker.start()
 
     def save(self, step: int, screen) -> None:
-        if screen is None:
-            return
-        img = self.Image.fromarray(screen)
-        tmp = self.folder / "latest.tmp.jpg"
-        img.save(tmp, quality=75)
-        os.replace(tmp, self.folder / "latest.jpg")
-        if step % self.every == 0:
-            img.save(self.folder / f"{step:05d}.jpg", quality=70)
+        if screen is not None:
+            try:
+                self.q.put_nowait((step, screen.copy()))
+            except Exception:
+                pass  # the disk is behind; the dashboard skips this frame, the game does not wait
+
+    def _run(self) -> None:
+        while True:
+            item = self.q.get()
+            if item is None:
+                return
+            step, screen = item
+            img = self.Image.fromarray(screen)
+            tmp = self.folder / "latest.tmp.jpg"
+            img.save(tmp, quality=75)
+            os.replace(tmp, self.folder / "latest.jpg")
+            if step % self.every == 0:
+                img.save(self.folder / f"{step:05d}.jpg", quality=70)
+
+    def close(self) -> None:
+        self.q.put(None)
+        self.worker.join(timeout=10)
 
 
 def play_episode(env: DoomEnv, decider: DoomDecider, runs_dir: str | Path, agent_name: str = "CodeYatri",
@@ -142,6 +164,8 @@ def play_episode(env: DoomEnv, decider: DoomDecider, runs_dir: str | Path, agent
             json.dump(final, fh, indent=2)
         event({"type": "session_end", **{k: final[k] for k in ("steps", "kills", "dead", "exited", "health")}})
         events.close()
+        if saver:
+            saver.close()
     return final
 
 

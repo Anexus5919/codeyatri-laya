@@ -50,6 +50,15 @@ ACTION_BUTTONS = {
 }
 RELEASE = [0.0] * len(BUTTONS)
 
+# Real time: a turn happens in one tic (the whole angle at once), a shot or a use is a short press, and a move
+# keeps running while Laya decides the next action, the way a player holds a key down. Turn-based mode (training
+# and tests) holds every action for HOLD_TICS tics instead.
+MOVES = ("forward", "backward", "strafe_left", "strafe_right")
+REALTIME_BUTTONS = {a: list(v) for a, v in ACTION_BUTTONS.items()}
+for _a in ("turn_left", "turn_right", "turn_left_big", "turn_right_big"):
+    REALTIME_BUTTONS[_a][_IDX[B.TURN_LEFT_RIGHT_DELTA]] *= HOLD_TICS
+REALTIME_TICS = {"shoot": 2, "use": 2}
+
 VARIABLES = [GV.HEALTH, GV.ARMOR, GV.SELECTED_WEAPON, GV.SELECTED_WEAPON_AMMO, GV.KILLCOUNT, GV.ITEMCOUNT,
              GV.SECRETCOUNT, GV.DAMAGECOUNT, GV.DAMAGE_TAKEN, GV.HITCOUNT, GV.DEAD, GV.POSITION_X, GV.POSITION_Y,
              GV.POSITION_Z, GV.ANGLE]
@@ -88,6 +97,9 @@ class DoomEnv:
         else:
             g.load_config(os.path.join(vzd.scenarios_path, f"{scenario}.cfg"))
         g.set_available_buttons(BUTTONS)
+        # Doom switches to a weapon the moment it is picked up; the chainsaw near many starts would leave the
+        # player unable to hit anything beyond 64 units. Weapons then change only when ammunition runs out.
+        g.add_game_args("+neverswitchonpickup 1")
         g.set_available_game_variables(VARIABLES)
         g.set_doom_skill(skill)
         g.set_screen_resolution(RESOLUTIONS[resolution])
@@ -119,9 +131,11 @@ class DoomEnv:
         return Observation(st.tic, vals, list(st.labels), list(st.objects), list(st.sectors), screen, width)
 
     def act(self, action: str) -> float:
-        reward = self.game.make_action(ACTION_BUTTONS[action], HOLD_TICS)
-        if self.realtime:
-            self.game.set_action(RELEASE)
+        if not self.realtime:
+            return self.game.make_action(ACTION_BUTTONS[action], HOLD_TICS)
+        reward = self.game.make_action(REALTIME_BUTTONS[action], REALTIME_TICS.get(action, 1))
+        if action not in MOVES:
+            self.game.set_action(RELEASE)  # only a move carries on while the next decision is made
         return reward
 
     @property
