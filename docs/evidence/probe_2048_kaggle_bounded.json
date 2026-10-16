@@ -1,0 +1,16 @@
+{
+ "n": 150,
+ "results": {
+  "v3": {
+   "accuracy": 0.987,
+   "corner_lost_picks": 0,
+   "pick_share": {
+    "left": 0.54,
+    "down": 0.26,
+    "up": 0.19,
+    "right": 0.01
+   },
+   "ms_per_state": 286.3
+  }
+ }
+}
