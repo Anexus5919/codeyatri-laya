@@ -21,6 +21,7 @@ from .games import GAMES
 from .spec_log import SpecLog, save_final_response, utc_ts, verify_log
 
 AGENT_NAME = "CodeYatri"
+DEFAULT_STYLE = {"snake": "words", "2048": "v3"}  # measured best fact wording per game (docs/experiments.md E3, E9)
 
 
 class EventLog:
@@ -136,7 +137,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--runs", default="runs", help="output folder (sim runs go to runs_sim by default)")
     ap.add_argument("--template", default="noul_nodir")
     ap.add_argument("--offer", default="legal", choices=["legal", "all"])
-    ap.add_argument("--style", default="words", choices=["words", "numbers"])
+    ap.add_argument("--style", default=None, choices=["words", "numbers", "v2", "v3", "v3s", "v3n", "v3c"],
+                    help="fact wording; default is the measured best per game (snake: words, 2048: v3)")
     ap.add_argument("--model", default="english")
     ap.add_argument("--device", default=None)
     ap.add_argument("--agent-name", default=AGENT_NAME)
@@ -159,8 +161,9 @@ def main(argv: list[str] | None = None) -> int:
 
         client = ArenaClient()
         runs = Path(args.runs)
+    style = args.style or DEFAULT_STYLE.get(args.game, "words")
     decider = LayaMoveDecider(args.game, model=args.model, device=args.device, template=args.template,
-                              offer=args.offer, style=args.style)
+                              offer=args.offer, style=style)
     info = decider.load()
     print(f"laya loaded: {info}", flush=True)
     report = play_session(client, decider, args.game, runs, args.agent_name, info, args.quiet)
