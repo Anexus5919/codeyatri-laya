@@ -1908,3 +1908,103 @@ code {
   transform: none;
   transition: none;
 }
+
+/* Doom stage: the saved game screen in place of the board, engine numbers underneath */
+.doom-screen {
+  position: absolute;
+  inset: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-height: 0;
+}
+.doom-frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  background: #000;
+  border: 1px solid var(--c-line);
+  overflow: hidden;
+}
+.doom-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  display: block;
+}
+.doom-noframe {
+  max-width: 46ch;
+  margin: 0;
+  padding: var(--sp-5);
+  text-align: center;
+  color: var(--c-text-3);
+  font-size: var(--fs-sm);
+}
+.doom-hud {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin: 0;
+}
+.doom-hud > div {
+  background: var(--c-surface-2);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+  min-width: 0;
+}
+.doom-hud dt {
+  font-size: var(--fs-xs);
+  color: var(--c-text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.doom-hud dd {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semi);
+  color: var(--c-text);
+}
+@media (max-width: 600px) {
+  .doom-hud {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.verify-checks {
+  list-style: none;
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.verify-checks li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+.verify-checks .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-text-4);
+  flex: none;
+}
+.verify-checks .is-ok .dot {
+  background: var(--c-green);
+}
+.verify-checks .is-bad .dot {
+  background: var(--c-amber);
+}
+.replay-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-top: var(--sp-3);
+}

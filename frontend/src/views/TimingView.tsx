@@ -10,7 +10,7 @@ type Key = "decide_ms" | "laya_ms" | "api_ms" | "turn_ms";
 const SERIES: { key: Key; label: string; what: string; tone: "ivory" | "teal" | "steel" | "muted" }[] = [
   { key: "decide_ms", label: "Decide", what: "Facts, one Laya call and the pick (timing.decide_ms)", tone: "ivory" },
   { key: "laya_ms", label: "Laya call", what: "The Laya forward pass alone (laya_ms in the decision event)", tone: "teal" },
-  { key: "api_ms", label: "Game API", what: "Sending the move and reading the response (timing.api_ms)", tone: "steel" },
+  { key: "api_ms", label: "Game API", what: "Sending the move and reading the response; for Doom, the engine running the action (timing.api_ms)", tone: "steel" },
   { key: "turn_ms", label: "Turn", what: "Previous game response to this one (timing.turn_ms)", tone: "muted" },
 ];
 

@@ -192,7 +192,7 @@ export function SnakeScene({ frame, lowMotion, onHover }: { frame: BoardFrame; l
       head.visible = n > 0;
       if (n > 0) {
         head.position.set(tmp.pts[0].x, TOP + 0.05 + (cell * 0.62) / 2, tmp.pts[0].z);
-        const dir = snake?.direction ?? frame.action ?? "up";
+        const dir = snake?.direction ?? (frame.action as Dir | null) ?? "up";
         head.rotation.set(0, HEAD_ROT[dir], 0);
       }
     }

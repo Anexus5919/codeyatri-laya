@@ -1,7 +1,7 @@
 // Custom SVG glyphs. Every status glyph has a distinct shape so meaning never rests on colour alone.
 
 import type { ReactNode } from "react";
-import type { Dir } from "../lib/types";
+import type { Act, Dir } from "../lib/types";
 
 type P = { size?: number; className?: string; title?: string };
 
@@ -37,15 +37,53 @@ export function BrandMark({ size = 34 }: { size?: number }) {
 }
 
 const ROT: Record<Dir, number> = { up: 0, right: 90, down: 180, left: 270 };
+// Doom moves reuse the arrow; a strafe is a sideways arrow, back is a downward one
+const MOVE_ROT: Partial<Record<Act, number>> = { forward: 0, backward: 180, strafe_left: 270, strafe_right: 90 };
+const ARROW = "M12 3.5 L19 11 H14.6 V20.5 H9.4 V11 H5 Z";
 
-export function DirGlyph({ dir, size = 22, className, title }: P & { dir: Dir }) {
+function TurnGlyph({ left, big, size, className, title }: P & { left: boolean; big: boolean }) {
+  // An arc with an arrowhead; the big turn sweeps further
+  const arc = big ? "M17.5 17 A7 7 0 1 0 6.6 9.4" : "M15.5 16.5 A6 6 0 0 0 8 7.6";
+  const head = big ? "M3.6 7.9 L7.4 6.9 L7.7 11 Z" : "M5.2 6.6 L9.1 5.9 L8.9 10 Z";
   return (
     <Svg size={size} className={className} title={title}>
-      <g transform={`rotate(${ROT[dir]} 12 12)`}>
-        <path d="M12 3.5 L19 11 H14.6 V20.5 H9.4 V11 H5 Z" fill="currentColor" />
+      <g transform={left ? undefined : "translate(24 0) scale(-1 1)"}>
+        <path d={arc} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+        <path d={head} fill="currentColor" />
       </g>
     </Svg>
   );
+}
+
+export function DirGlyph({ dir, size = 22, className, title }: P & { dir: Act }) {
+  if (dir in ROT || dir in MOVE_ROT) {
+    const rot = dir in ROT ? ROT[dir as Dir] : MOVE_ROT[dir] ?? 0;
+    return (
+      <Svg size={size} className={className} title={title}>
+        <g transform={`rotate(${rot} 12 12)`}>
+          <path d={ARROW} fill="currentColor" />
+        </g>
+      </Svg>
+    );
+  }
+  if (dir === "shoot")
+    return (
+      <Svg size={size} className={className} title={title}>
+        <circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" strokeWidth="2.2" />
+        <path d="M12 2.5 V7 M12 17 V21.5 M2.5 12 H7 M17 12 H21.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+      </Svg>
+    );
+  if (dir === "use")
+    return (
+      <Svg size={size} className={className} title={title}>
+        <path d="M6 21 V4.5 a1.5 1.5 0 0 1 1.5 -1.5 H16.5 a1.5 1.5 0 0 1 1.5 1.5 V21" fill="none" stroke="currentColor" strokeWidth="2.2" />
+        <path d="M3.5 21 H20.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        <circle cx="14.6" cy="12.5" r="1.4" fill="currentColor" />
+      </Svg>
+    );
+  const left = dir === "turn_left" || dir === "turn_left_big";
+  return <TurnGlyph left={left} big={dir === "turn_left_big" || dir === "turn_right_big"} size={size} className={className} title={title} />;
 }
 
 export function AppliedGlyph({ size = 14, className, title }: P) {
@@ -223,6 +261,13 @@ export function GameGlyph({ game, size = 18 }: { game: string | null | undefined
       <Svg size={size}>
         <path d="M4 18 H13 a3 3 0 0 0 0 -6 H10 a3 3 0 0 1 0 -6 H18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
         <circle cx="19.5" cy="6" r="1.7" fill="currentColor" />
+      </Svg>
+    );
+  if (game === "doom")
+    return (
+      <Svg size={size}>
+        <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
+        <path d="M12 2.5 V7.5 M12 16.5 V21.5 M2.5 12 H7.5 M16.5 12 H21.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </Svg>
     );
   if (game === "2048")

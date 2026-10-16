@@ -224,6 +224,23 @@ export function recheckVerify(): void {
   void runVerify(token, true);
 }
 
+// Doom: replay the episode's demo recording in the engine and compare the result with the log
+export async function replayVerify(): Promise<void> {
+  const s = store.get();
+  const id = s.sessionId;
+  if (!id) return;
+  const t = token;
+  store.set({ verifyBusy: true });
+  try {
+    const v = await api.verify(id, undefined, true);
+    if (t !== token) return;
+    store.set({ verify: v, verifyFor: id, verifyAt: Date.now(), verifyBusy: false, verifyError: null });
+  } catch (e) {
+    if (t !== token) return;
+    store.set({ verifyBusy: false, verifyError: e instanceof Error ? e.message : String(e) });
+  }
+}
+
 export function startFeed(): void {
   if (started) return;
   started = true;

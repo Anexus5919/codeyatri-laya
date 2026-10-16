@@ -55,12 +55,15 @@ export function Rail() {
   );
 }
 
+const STAGES = ["snake", "2048", "doom"];
+
 function useGames(): string[] {
   const sessions = useStore((s) => s.sessions);
   return useMemo(() => {
-    const found = new Set(sessions.map((s) => s.game ?? "unknown"));
-    const rest = [...found].filter((g) => g !== "snake" && g !== "2048").sort();
-    return ["snake", "2048", ...rest];
+    // The three stages always have a tab; any other game only once it has a real (non-test) session
+    const real = new Set(sessions.filter((s) => sourceOf(s) === "arena").map((s) => s.game ?? "unknown"));
+    const rest = [...real].filter((g) => !STAGES.includes(g)).sort();
+    return [...STAGES, ...rest];
   }, [sessions]);
 }
 
@@ -80,22 +83,20 @@ function GameSwitch() {
           </button>
         );
       })}
-      <button type="button" aria-pressed={false} onClick={() => window.location.assign("/doom")} title="Stage 3: the real Doom, every action decided by Laya">
-        Doom
-      </button>
     </div>
   );
 }
 
 function SourceSwitch() {
   const source = useStore((s) => s.source);
+  const doom = useStore((s) => s.game === "doom");
   return (
     <div className="seg seg-source" role="group" aria-label="Data source">
       <button type="button" aria-pressed={source === "arena"} onClick={() => chooseSource("arena")}>
-        Arena (real)
+        {doom ? "Real runs" : "Arena (real)"}
       </button>
       <button type="button" aria-pressed={source === "simulator"} className="is-sim" onClick={() => chooseSource("simulator")}>
-        Simulator (test)
+        {doom ? "Test runs" : "Simulator (test)"}
       </button>
     </div>
   );
@@ -118,7 +119,7 @@ function SessionPicker() {
       <select value={current ?? ""} onChange={(e) => selectSession(e.target.value, { manual: true })} title="Other sessions for this game and source, newest first">
         {rows.map((s) => (
           <option key={keyOf(s)} value={keyOf(s)}>
-            {shortId(s.session_id)} · {fmtInt(s.points)} pts{s.status && s.status !== "finished" ? ` · ${s.status}` : ""}
+            {shortId(s.session_id)} · {s.game === "doom" ? `${fmtInt(s.kills ?? 0)} kills` : `${fmtInt(s.points)} pts`}{s.status && s.status !== "finished" ? ` · ${s.status}` : ""}
           </option>
         ))}
       </select>

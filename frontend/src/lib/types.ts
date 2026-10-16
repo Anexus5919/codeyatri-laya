@@ -3,10 +3,21 @@
 export type Dir = "up" | "down" | "left" | "right";
 export const DIRS: readonly Dir[] = ["up", "down", "left", "right"] as const;
 
+// Doom: one yes/no question per offered action instead of per direction
+export type DoomAction =
+  | "shoot" | "turn_left" | "turn_right" | "turn_left_big" | "turn_right_big"
+  | "forward" | "backward" | "strafe_left" | "strafe_right" | "use";
+export const DOOM_ACTIONS: readonly DoomAction[] = [
+  "shoot", "turn_left", "turn_right", "turn_left_big", "turn_right_big",
+  "forward", "backward", "strafe_left", "strafe_right", "use",
+] as const;
+// Anything a logged decision can choose
+export type Act = Dir | DoomAction;
+
 export type Status = "live" | "idle" | "interrupted" | "finished";
-export type EnvKind = "hosted" | "simulator" | "unknown";
+export type EnvKind = "hosted" | "simulator" | "engine" | "unknown";
 export type GameState = Record<string, unknown>;
-export type DirMap<T> = Partial<Record<Dir, T>>;
+export type DirMap<T> = Partial<Record<Act, T>>;
 
 export interface Timing {
   decide_ms?: number;
@@ -51,6 +62,7 @@ export interface SessionItem {
   key?: string;
   source?: "arena" | "simulator";
   origin?: "runs" | "sim";
+  kills?: number | null;
 }
 
 export interface SessionsResponse {
@@ -67,21 +79,23 @@ export interface DecisionEvent {
   kinds?: DirMap<string> | null;
   p_true?: DirMap<number> | null;
   probabilities?: DirMap<number> | null;
-  chosen?: Dir;
+  chosen?: Act;
   source?: string;
-  laya_choice?: Dir | null;
+  laya_choice?: Act | null;
   reason?: string | null;
   decide_ms?: number | null;
   laya_ms?: number | null;
   ts?: string | null;
   state_text?: string | null;
+  offered?: Act[] | null;
+  tic?: number | null;
 }
 
 export interface StepRecord {
   i: number;
   step: number;
   result: "applied" | "rejected" | string;
-  action: Dir;
+  action: Act;
   source?: string;
   confidence?: number;
   probabilities?: DirMap<number>;
@@ -116,6 +130,13 @@ export interface Summary {
   best_tile?: number;
   score?: number;
   target_tile?: number;
+  kills?: number;
+  health?: number | null;
+  dead?: boolean;
+  exited?: boolean;
+  items?: number | null;
+  explored?: number | null;
+  scenario?: string | null;
   points_computed: number | null;
   points: number | null;
   points_source: string;
@@ -194,6 +215,10 @@ export interface VerifyResult {
   final_done?: unknown;
   session_id?: string;
   game?: string;
+  // Doom: checks on the engine's demo recording, and the result of replaying it when asked
+  checks?: Record<string, boolean>;
+  replay?: { kills: number; items: number; secrets: number; health: number; dead: boolean; exited: boolean; tic: number } | null;
+  frames?: boolean;
 }
 
 export interface StepDetail {

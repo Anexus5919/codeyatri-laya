@@ -30,7 +30,8 @@ export const api = {
   sessions: (signal?: AbortSignal) => getJSON<SessionsResponse>("api/sessions", signal),
   history: (id: string, after: number, limit = 400, signal?: AbortSignal) =>
     getJSON<HistoryResponse>(`api/history?id=${enc(id)}&after=${after}&limit=${limit}`, signal),
-  verify: (id: string, signal?: AbortSignal) => getJSON<VerifyResult>(`api/verify?id=${enc(id)}`, signal),
+  verify: (id: string, signal?: AbortSignal, replay = false) =>
+    getJSON<VerifyResult>(`api/verify?id=${enc(id)}${replay ? "&replay=1" : ""}`, signal),
   step: (id: string, i: number, signal?: AbortSignal) => getJSON<StepDetail>(`api/step?id=${enc(id)}&i=${i}`, signal),
 };
 

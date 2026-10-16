@@ -77,7 +77,7 @@ function DirRow({ d, animKey }: { d: DirView; animKey: string }) {
   );
 }
 
-function Questions({ sessionId, decision, pendingText }: { sessionId: string | null; decision: DecisionView; pendingText: string | null }) {
+function Questions({ sessionId, decision, pendingText, doom }: { sessionId: string | null; decision: DecisionView; pendingText: string | null; doom: boolean }) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const pending = decision.origin === "pending";
@@ -96,7 +96,7 @@ function Questions({ sessionId, decision, pendingText }: { sessionId: string | n
       {open ? (
         <div id={id} className="questions-body">
           {pending ? (
-            <p className="muted">The question text is written with the move line; it appears once this move is logged.</p>
+            <p className="muted">The question text is written with the {doom ? "action" : "move"} line; it appears once it is logged.</p>
           ) : !detail ? (
             <p className="muted">Loading the logged line</p>
           ) : detail.error ? (
@@ -120,7 +120,7 @@ function Questions({ sessionId, decision, pendingText }: { sessionId: string | n
           )}
           {stateText ? (
             <div className="q-state">
-              <span className="q-dir">Board description</span>
+              <span className="q-dir">{doom ? "State description" : "Board description"}</span>
               <p className="raw">{stateText}</p>
             </div>
           ) : null}
@@ -141,10 +141,11 @@ export function DecisionPanel({ decision, sessionId, simulator, context, pending
   }
   const animKey = `${decision.origin}-${decision.i ?? "p"}-${decision.step}-${decision.ts}`;
   const t = decision.timing;
+  const doom = decision.dirs.length > 4;
   const timing = [
     ["Decide", fmtMs(t?.decide_ms ?? decision.decideMs)],
     ["Laya", fmtMs(decision.layaMs)],
-    ["Game API", t ? (simulator ? "local simulator" : fmtMs(t.api_ms)) : "pending"],
+    doom ? ["Engine", t ? fmtMs(t.api_ms) : "pending"] : ["Game API", t ? (simulator ? "local simulator" : fmtMs(t.api_ms)) : "pending"],
     ["Turn", t ? fmtMs(t.turn_ms) : "pending"],
   ];
   return (
@@ -159,7 +160,7 @@ export function DecisionPanel({ decision, sessionId, simulator, context, pending
       {decision.source === "fallback" && decision.reason ? <p className="decision-reason">{decision.reason}</p> : null}
       {decision.result === "rejected" && decision.error ? <p className="decision-reason">Game said: {decision.error}</p> : null}
       {decision.eventMissing ? <p className="decision-reason">No matching decision event, so yes-probabilities and facts are unavailable for this line.</p> : null}
-      <p className="decision-help">P(yes) is Laya's answer to one yes/no question per move, not a chance of winning.</p>
+      <p className="decision-help">P(yes) is Laya's answer to one yes/no question per {doom ? "action" : "move"}, not a chance of winning.</p>
       <motion.ol
         key={animKey}
         className="dir-list"
@@ -171,7 +172,7 @@ export function DecisionPanel({ decision, sessionId, simulator, context, pending
           <DirRow key={d.dir} d={d} animKey={animKey} />
         ))}
       </motion.ol>
-      <Questions sessionId={sessionId} decision={decision} pendingText={pendingText} />
+      <Questions sessionId={sessionId} decision={decision} pendingText={pendingText} doom={doom} />
       <p className="decision-timing num">
         {timing.map(([k, v], n) => (
           <span key={k}>

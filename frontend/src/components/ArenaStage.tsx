@@ -2,6 +2,7 @@ import { Component, lazy, Suspense, useCallback, useMemo, useState, type ReactNo
 import type { BoardFrame } from "../lib/derive";
 import { setRenderer, store, useStore } from "../lib/store";
 import { BoardSvg } from "./BoardSvg";
+import { DoomScreen } from "./DoomScreen";
 
 const Arena3D = lazy(() => import("../arena3d/Arena3D"));
 
@@ -50,6 +51,13 @@ export function ArenaStage({ game, frame }: { game: string | null | undefined; f
   const { use3d, reason } = use3D(game);
   const [hover, setHover] = useState<string | null>(null);
   const onHover = useCallback((t: string | null) => setHover(t), []);
+  if (game === "doom") {
+    return (
+      <div className="stage-canvas is-2d">
+        <DoomScreen frame={frame} />
+      </div>
+    );
+  }
   const svg = <BoardSvg game={game} frame={frame} onHover={onHover} />;
   return (
     <div className={`stage-canvas${use3d ? " is-3d" : " is-2d"}`}>

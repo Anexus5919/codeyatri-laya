@@ -71,7 +71,7 @@ function SnakeSvg({ frame, onHover }: { frame: BoardFrame; onHover: HoverFn }) {
   const head = snake.body[0];
   const prevHead = prev?.body[0];
   const moved = head && prevHead && frame.action && Math.abs(head.x - prevHead.x) + Math.abs(head.y - prevHead.y) === 1;
-  const dir = snake.direction ?? frame.action;
+  const dir = snake.direction ?? (frame.action as Dir | null);
   const eye = dir ? DELTA[dir] : { x: 1, y: 0 };
   const side = { x: -eye.y, y: eye.x };
   return (
@@ -130,9 +130,9 @@ function Svg2048({ frame, onHover }: { frame: BoardFrame; onHover: HoverFn }) {
         }),
       )}
       {frame.probes ? DIRS.map((d) => <Probe key={d} dir={d} cx={edge[d][0]} cy={edge[d][1]} decision={frame.probes!} s={0.95} />) : null}
-      {frame.action && !frame.probes ? (
+      {frame.action && frame.action in edge && !frame.probes ? (
         <g className="move-arrow" aria-hidden="true" key={frame.key}>
-          <text x={edge[frame.action][0]} y={edge[frame.action][1]} dy="0.35em" textAnchor="middle" fontSize={0.34}>
+          <text x={edge[frame.action as Dir][0]} y={edge[frame.action as Dir][1]} dy="0.35em" textAnchor="middle" fontSize={0.34}>
             {DIR_LABEL[frame.action].toUpperCase()}
           </text>
         </g>

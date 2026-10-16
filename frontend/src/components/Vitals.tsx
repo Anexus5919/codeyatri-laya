@@ -53,10 +53,45 @@ function RankLine({ game, sessionId }: { game: string; sessionId: string }) {
   );
 }
 
+function scenarioName(scenario: string | null | undefined): string {
+  if (!scenario) return "Doom";
+  const [wad, map] = scenario.split(":");
+  if (map) return `${wad === "freedoom2" ? "Freedoom: Phase 2" : "Freedoom"} ${map}`;
+  return scenario.replace(/_/g, " ");
+}
+
+export function doomOutcome(summary: Summary, done: boolean): string {
+  if (!done) return `health ${fmtInt(summary.health ?? 0)}, playing`;
+  return summary.exited ? "reached the level exit" : summary.dead ? "died" : "time limit reached";
+}
+
+function DoomStats({ summary, done }: { summary: Summary; done: boolean }) {
+  const share = isNum(summary.fallback_share) ? summary.fallback_share : 0;
+  return (
+    <section className="stats" aria-label="Session numbers">
+      <div className="stat-points">
+        <span className="big num">{fmtInt(summary.kills ?? 0)}</span>
+        <span className="stat-label">kills</span>
+      </div>
+      <div className="stat-gate">
+        <span className={`stat-text${summary.exited ? " is-open" : ""}`}>
+          {scenarioName(summary.scenario)}, {doomOutcome(summary, done)}
+        </span>
+        <span className="stat-text">{isNum(summary.explored) ? `${fmtInt(summary.explored)} areas explored` : "every action decided by Laya"}</span>
+      </div>
+      <div className="stat-moves">
+        <span className="stat-text num">{fmtInt(summary.steps)} actions, held 4 game tics each</span>
+        <span className={`stat-text num${share > 0.1 ? " is-warn" : ""}`}>fallback {fmtPct(share)} of a 10% limit</span>
+      </div>
+    </section>
+  );
+}
+
 export function StatsLine() {
   const meta = useStore((s) => s.feed?.meta ?? null);
   const summary = meta?.summary;
   if (!summary) return <div className="stats" aria-hidden="true" />;
+  if (meta?.game === "doom") return <DoomStats summary={summary} done={meta.status === "finished"} />;
   const arena = summary.source === "arena" && summary.env_kind === "hosted";
   const gate = gateParts(meta?.game, summary);
   const share = isNum(summary.fallback_share) ? summary.fallback_share : 0;
@@ -91,6 +126,17 @@ export function StatsLine() {
 // Full stage-gate breakdown for the audit view
 export function StageGate({ game, summary }: { game: string | null | undefined; summary: Summary | null | undefined }) {
   if (!summary) return null;
+  if (game === "doom") {
+    return (
+      <figure className="gate">
+        <figcaption>Stage 3: the real Doom</figcaption>
+        <p className="gate-now">
+          No unlock gate: the episode is judged on how the agent plays. {scenarioName(summary.scenario)}: {fmtInt(summary.kills ?? 0)} kills,{" "}
+          {doomOutcome(summary, summary.done)}.
+        </p>
+      </figure>
+    );
+  }
   if (game === "2048") {
     const best = summary.best_tile ?? 0;
     const score = summary.score ?? 0;

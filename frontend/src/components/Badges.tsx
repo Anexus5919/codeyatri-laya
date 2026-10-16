@@ -10,7 +10,9 @@ export function EnvBadge({ kind, env }: { kind: EnvKind | undefined; env?: strin
       ? `Real arena session (env ${env ?? "HOSTED"})`
       : k === "simulator"
         ? `Local simulator session (env ${env ?? "not logged"}): a test run, never an arena result`
-        : "The session_start event has no env label";
+        : k === "engine"
+          ? "Our own copy of the Doom engine (ViZDoom with Freedoom data); stage 3 is not played on the hosted arena"
+          : "The session_start event has no env label";
   return (
     <span className={`env-badge env-${k}`} title={title}>
       {k === "hosted" ? <GlobeGlyph size={13} /> : <SimGlyph size={13} />}

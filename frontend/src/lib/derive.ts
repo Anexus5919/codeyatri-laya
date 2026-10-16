@@ -2,25 +2,27 @@
 // a missing field becomes null and the view says "not logged".
 
 import type { Selection, BoardPhase } from "./store";
-import type { DecisionEvent, Dir, DirMap, EnvKind, GameState, Status, StepRecord, Summary } from "./types";
-import { DIRS } from "./types";
+import type { Act, DecisionEvent, Dir, DirMap, EnvKind, GameState, Status, StepRecord, Summary } from "./types";
+import { DIRS, DOOM_ACTIONS } from "./types";
 
 export const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
 export function gameLabel(g: string | null | undefined): string {
   if (g === "snake") return "Snake";
   if (g === "2048") return "2048";
+  if (g === "doom") return "Doom";
   return g ? g.charAt(0).toUpperCase() + g.slice(1) : "Unknown game";
 }
 
 export function envLabel(kind: EnvKind | undefined): string {
   if (kind === "hosted") return "Hosted arena";
   if (kind === "simulator") return "Local simulator";
+  if (kind === "engine") return "Local Doom engine";
   return "Environment not logged";
 }
 
 export function shortId(id: string | null | undefined): string {
-  return id ? id.slice(0, 8) : "";
+  return id ? id.replace(/^doom-/, "").slice(0, 8) : "";
 }
 
 export function fmtInt(v: unknown): string {
@@ -56,7 +58,21 @@ export function fmtTs(ts: unknown): string {
   return d.toLocaleString("en-GB", { hour12: false, year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-export const DIR_LABEL: Record<Dir, string> = { up: "Up", down: "Down", left: "Left", right: "Right" };
+export const DIR_LABEL: Record<Act, string> = {
+  up: "Up", down: "Down", left: "Left", right: "Right",
+  shoot: "Shoot", turn_left: "Turn left 5°", turn_right: "Turn right 5°", turn_left_big: "Turn left 30°",
+  turn_right_big: "Turn right 30°", forward: "Forward", backward: "Back", strafe_left: "Strafe left",
+  strafe_right: "Strafe right", use: "Use (door)",
+};
+
+const DOOM_SET = new Set<string>(DOOM_ACTIONS);
+export const isDoomAction = (a: unknown): boolean => typeof a === "string" && DOOM_SET.has(a);
+
+// The options a decision chose between: Doom's actions, or the four directions of the arena games
+function optionsFor(ev: DecisionEvent | null | undefined, chosen: Act | null): readonly Act[] {
+  if (isDoomAction(chosen) || Object.keys(ev?.p_true ?? {}).some(isDoomAction)) return DOOM_ACTIONS;
+  return DIRS;
+}
 
 // What a "kind" from the facts means, worded for people; the fact text itself is always shown too
 export const KIND_LABEL: Record<string, string> = {
@@ -75,14 +91,14 @@ const NOT_ASKED_KINDS = new Set(["reverse", "noop", "blocked", "wall"]);
 
 // The row already names the direction, so a leading "move up: " is dropped from the logged fact.
 // In the noul_nodir design that remainder is exactly the text that went into the question.
-export function factBody(dir: Dir, fact: string | null): string | null {
+export function factBody(dir: Act, fact: string | null): string | null {
   if (!fact) return null;
   const prefix = `move ${dir}: `;
   return fact.toLowerCase().startsWith(prefix) ? fact.slice(prefix.length) : fact;
 }
 
 export interface DirView {
-  dir: Dir;
+  dir: Act;
   asked: boolean | null; // null when p_true was not logged at all
   pYes: number | null;
   share: number | null;
@@ -99,9 +115,9 @@ export interface DecisionView {
   step: number | null;
   result: "applied" | "rejected" | "awaiting" | "unsent" | string;
   error: string | null;
-  chosen: Dir | null;
+  chosen: Act | null;
   source: string | null;
-  layaChoice: Dir | null;
+  layaChoice: Act | null;
   reason: string | null;
   confidence: number | null;
   dirs: DirView[];
@@ -115,14 +131,17 @@ export interface DecisionView {
   nQuestions: number | null;
 }
 
-function dirViews(ev: DecisionEvent | null | undefined, probs: DirMap<number> | null | undefined, chosen: Dir | null, layaChoice: Dir | null, rejectedHere: Set<Dir>): DirView[] {
+function dirViews(ev: DecisionEvent | null | undefined, probs: DirMap<number> | null | undefined, chosen: Act | null, layaChoice: Act | null, rejectedHere: Set<Act>): DirView[] {
   const pTrue = ev?.p_true ?? null;
-  return DIRS.map((d) => {
+  const doom = isDoomAction(chosen) || Object.keys(pTrue ?? {}).some(isDoomAction);
+  return optionsFor(ev, chosen).map((d) => {
     const asked = pTrue ? d in pTrue : null;
     const kind = ev?.kinds?.[d] ?? null;
     const fact = ev?.facts?.[d] ?? null;
     let notAskedReason: string | null = null;
-    if (asked === false) {
+    if (asked === false && doom) {
+      notAskedReason = "not offered: it would do nothing right now";
+    } else if (asked === false) {
       if (kind && NOT_ASKED_KINDS.has(kind)) notAskedReason = `illegal move (${KIND_LABEL[kind] ?? kind})`;
       else if (rejectedHere.has(d)) notAskedReason = "rejected by the game earlier in this step";
       else notAskedReason = "no question was sent";
@@ -148,12 +167,12 @@ function errText(e: unknown): string | null {
 
 export function decisionFromRecord(r: StepRecord, records: StepRecord[]): DecisionView {
   const ev = r.event ?? null;
-  const rejectedHere = new Set<Dir>();
+  const rejectedHere = new Set<Act>();
   for (let k = r.i - 1; k >= 0 && records[k]?.step === r.step; k--) {
     if (records[k].result === "rejected") rejectedHere.add(records[k].action);
   }
   const chosen = r.action ?? null;
-  const layaChoice = (ev?.laya_choice as Dir | undefined) ?? null;
+  const layaChoice = (ev?.laya_choice as Act | undefined) ?? null;
   const dirs = dirViews(ev, r.probabilities ?? ev?.probabilities, chosen, layaChoice, rejectedHere);
   return {
     origin: "record",
@@ -179,7 +198,7 @@ export function decisionFromRecord(r: StepRecord, records: StepRecord[]): Decisi
 }
 
 export function decisionFromPending(ev: DecisionEvent, finished: boolean, records: StepRecord[]): DecisionView {
-  const rejectedHere = new Set<Dir>();
+  const rejectedHere = new Set<Act>();
   for (let k = records.length - 1; k >= 0 && records[k]?.step === ev.step; k--) {
     if (records[k].result === "rejected") rejectedHere.add(records[k].action);
   }
@@ -216,11 +235,13 @@ export interface BoardFrame {
   state: GameState | null;
   // The recorded move that produced `state` from `from`, used to animate exactly that move
   from: GameState | null;
-  action: Dir | null;
+  action: Act | null;
   // Probes show a decision made ON this board (live pending decision, or history "before")
   probes: DecisionView | null;
   caption: string;
   key: string;
+  // Doom: the step whose saved screen this board shows (the screen Laya saw before that step's action)
+  imageStep: number | null;
 }
 
 export interface Frame {
@@ -255,6 +276,7 @@ export function deriveFrame(input: FrameInput, selection: Selection, phase: Boar
           probes: null,
           caption: `Board after line ${r.i + 1} (step ${r.step}, ${r.result})`,
           key: `h${r.i}a`,
+          imageStep: r.step + 1,
         },
       };
     }
@@ -270,6 +292,7 @@ export function deriveFrame(input: FrameInput, selection: Selection, phase: Boar
         probes: decision,
         caption: `Board Laya saw at step ${r.step} (line ${r.i + 1}, before the move)`,
         key: `h${r.i}b`,
+        imageStep: r.step,
       },
     };
   }
@@ -289,6 +312,7 @@ export function deriveFrame(input: FrameInput, selection: Selection, phase: Boar
         probes: decision,
         caption: finished ? `Last decision (step ${pending.step}) was never sent` : `Deciding step ${pending.step} on this board`,
         key: `p${pending.step}-${pending.ts}`,
+        imageStep: pending.step ?? null,
       },
     };
   }
@@ -304,6 +328,7 @@ export function deriveFrame(input: FrameInput, selection: Selection, phase: Boar
         probes: null,
         caption: `Board after step ${last.step} (${last.result})`,
         key: `l${last.i}`,
+        imageStep: last.step + 1,
       },
     };
   }
@@ -311,7 +336,7 @@ export function deriveFrame(input: FrameInput, selection: Selection, phase: Boar
     mode: "live",
     focusIndex: null,
     decision: null,
-    board: { state: input.start, from: null, action: null, probes: null, caption: "Starting board from the first game response", key: "start" },
+    board: { state: input.start, from: null, action: null, probes: null, caption: "Starting board from the first game response", key: "start", imageStep: 1 },
   };
 }
 
@@ -420,6 +445,10 @@ export function statusText(status: Status | undefined | null, summary: Summary |
     case "interrupted":
       return { label: "Interrupted", detail: `no session_end, last write ${fmtAge(ageS)}` };
     case "finished": {
+      if (summary?.game === "doom") {
+        const how = summary.exited ? "reached the level exit" : summary.dead ? "died" : "time limit reached";
+        return { label: summary.exited ? "Finished, exit reached" : "Finished", detail: `${how}, ${fmtInt(summary.kills ?? 0)} kills` };
+      }
       const won = summary?.won;
       const pts = summary?.points;
       const outcome = won === true ? "won" : won === false ? "not won" : "outcome not logged";

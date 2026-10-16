@@ -98,7 +98,7 @@ function LoggedLine({ sessionId, i }: { sessionId: string | null; i: number | nu
       )}
       {d.data.event?.state_text ? (
         <>
-          <h3>Board description sent with them</h3>
+          <h3>{d.data.questions_by_dir && Object.keys(d.data.questions_by_dir).some((k) => k.length > 5) ? "State description sent with them" : "Board description sent with them"}</h3>
           <p className="raw">{d.data.event.state_text}</p>
         </>
       ) : null}

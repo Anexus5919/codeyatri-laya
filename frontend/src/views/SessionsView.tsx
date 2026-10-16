@@ -107,11 +107,11 @@ export function SessionsView() {
                 <span className="small muted">{fmtAge(s.age_s)}</span>
               </span>
               <span className="sr-nums num">
-                {fmtInt(s.steps)} moves, {fmtInt(s.rejected ?? 0)} rejected, fallback {fmtPct(s.fallback_share ?? 0)}
+                {s.game === "doom" ? `${fmtInt(s.steps)} actions` : `${fmtInt(s.steps)} moves, ${fmtInt(s.rejected ?? 0)} rejected`}, fallback {fmtPct(s.fallback_share ?? 0)}
               </span>
               <span className="sr-outcome">
-                <b className="num">{fmtInt(s.points)}</b>
-                <span className="small muted">points, {outcome(s)}</span>
+                <b className="num">{s.game === "doom" ? fmtInt(s.kills ?? 0) : fmtInt(s.points)}</b>
+                <span className="small muted">{s.game === "doom" ? "kills" : "points"}, {outcome(s)}</span>
               </span>
             </button>
           </li>

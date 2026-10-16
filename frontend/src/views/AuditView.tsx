@@ -1,7 +1,7 @@
 import { EnvBadge, StatusBadge } from "../components/Badges";
 import { ShieldGlyph } from "../components/Glyphs";
 import { FallbackMeter, StageGate } from "../components/Vitals";
-import { recheckVerify } from "../lib/feed";
+import { recheckVerify, replayVerify } from "../lib/feed";
 import { fmtAge, fmtInt, fmtTs, gameLabel } from "../lib/derive";
 import { useRecords } from "../lib/hooks";
 import { enterHistory, useStore } from "../lib/store";
@@ -30,13 +30,18 @@ export function AuditView() {
   const final = meta?.final;
   const tail = records.slice(-8);
   const state = verify ? (verify.pending ? "wait" : verify.ok ? "ok" : "bad") : "wait";
+  const doom = meta?.game === "doom";
 
   return (
     <div className="view audit-view">
       <header className="view-head">
         <div>
           <h1>Audit and verification</h1>
-          <p className="sub">Checked by the server with the same rules the submission is judged on: hash chain, step order, decision blocks, fallback share and the final response.</p>
+          <p className="sub">
+            {doom
+              ? "Checked by the server: hash chain, step order and decision blocks, plus the engine's demo recording of the episode, which replays exactly."
+              : "Checked by the server with the same rules the submission is judged on: hash chain, step order, decision blocks, fallback share and the final response."}
+          </p>
         </div>
         <button type="button" className="btn" onClick={recheckVerify} disabled={busy}>
           {busy ? "Checking..." : "Re-check now"}
@@ -60,8 +65,32 @@ export function AuditView() {
               <Field k="lines" v={verify.lines} />
               <Field k="applied" v={verify.applied} />
               <Field k="fallbacks" v={verify.fallbacks} />
-              <Field k="final response" v={verify.final_done === undefined ? "not saved yet" : `done ${String(verify.final_done)}, score ${String(verify.final_score)}`} />
+              {doom ? null : <Field k="final response" v={verify.final_done === undefined ? "not saved yet" : `done ${String(verify.final_done)}, score ${String(verify.final_score)}`} />}
             </dl>
+          ) : null}
+          {doom && verify && verify.checks ? (
+            <>
+              <ul className="verify-checks">
+                {Object.entries(verify.checks).map(([k, ok]) => (
+                  <li key={k} className={ok ? "is-ok" : "is-bad"}>
+                    <span className="dot" aria-hidden="true" />
+                    {k}: {ok ? "yes" : "no"}
+                  </li>
+                ))}
+              </ul>
+              <div className="replay-row">
+                <button type="button" className="btn" onClick={() => void replayVerify()} disabled={busy || meta?.status !== "finished"}>
+                  {busy ? "Replaying..." : "Replay the recording in the engine"}
+                </button>
+                <span className="small muted">
+                  {verify.replay
+                    ? `Engine replay: ${verify.replay.kills} kills, health ${verify.replay.health}, ${verify.replay.dead ? "died" : verify.replay.exited ? "level exit" : "time limit"} at tic ${verify.replay.tic}`
+                    : meta?.status === "finished"
+                      ? "Plays the demo back in the engine and compares kills and how the episode ended."
+                      : "Available once the episode has ended."}
+                </span>
+              </div>
+            </>
           ) : null}
           {verify && verify.problems.length ? (
             <ol className="problems">
@@ -109,8 +138,8 @@ export function AuditView() {
           </header>
           <dl className="fields">
             <Field k="log lines" v={summary?.lines} />
-            <Field k="applied moves" v={summary?.steps} />
-            <Field k="rejected moves" v={summary?.rejected} />
+            <Field k={doom ? "applied actions" : "applied moves"} v={summary?.steps} />
+            {doom ? null : <Field k="rejected moves" v={summary?.rejected} />}
             <Field k="decision events" v={summary?.decisions} />
             <Field k="unreadable log lines" v={meta?.bad_lines} />
           </dl>
@@ -122,15 +151,29 @@ export function AuditView() {
           <header className="panel-head">
             <h2>Outcome</h2>
           </header>
-          <dl className="fields">
-            <Field k="points" v={summary?.points} />
-            <Field k="points source" v={summary?.points_source === "session_end" ? "session_end event" : "computed from the latest state"} mono={false} />
-            <Field k="points computed" v={summary?.points_computed} />
-            <Field k="won" v={summary?.won} />
-            <Field k="final response score" v={final?.score} />
-            <Field k="final response steps" v={final?.steps} />
-            <Field k="session_end" v={end ? `score ${String(end.score)}, steps ${String(end.steps)}, done ${String(end.done)}` : null} />
-          </dl>
+          {doom ? (
+            <dl className="fields">
+              <Field k="scenario" v={summary?.scenario} />
+              <Field k="kills" v={summary?.kills} />
+              <Field k="health" v={summary?.health} />
+              <Field k="died" v={summary?.dead} />
+              <Field k="level exit reached" v={summary?.exited} />
+              <Field k="items picked up" v={summary?.items} />
+              <Field k="areas explored" v={summary?.explored} />
+              <Field k="recording" v={final ? (final as Record<string, unknown>).recording : null} />
+              <Field k="recording sha256" v={final ? (final as Record<string, unknown>).recording_sha256 : null} />
+            </dl>
+          ) : (
+            <dl className="fields">
+              <Field k="points" v={summary?.points} />
+              <Field k="points source" v={summary?.points_source === "session_end" ? "session_end event" : "computed from the latest state"} mono={false} />
+              <Field k="points computed" v={summary?.points_computed} />
+              <Field k="won" v={summary?.won} />
+              <Field k="final response score" v={final?.score} />
+              <Field k="final response steps" v={final?.steps} />
+              <Field k="session_end" v={end ? `score ${String(end.score)}, steps ${String(end.steps)}, done ${String(end.done)}` : null} />
+            </dl>
+          )}
         </section>
 
         <section className="panel chain" aria-label="Hash chain tail">

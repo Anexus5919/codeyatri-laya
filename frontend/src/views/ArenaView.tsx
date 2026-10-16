@@ -35,23 +35,29 @@ function EmptyState() {
       <div className="empty">
         {source === "arena" ? (
           <>
-            <h1>No arena session for {name} yet.</h1>
-            <p>{game === "2048" ? "It unlocks after the Snake run is verified. Real 2048 sessions appear here as soon as they are written to runs/2048." : `Real ${name} sessions appear here as soon as the runner writes them.`}</p>
+            <h1>{game === "doom" ? "No real Doom run yet." : `No arena session for ${name} yet.`}</h1>
+            <p>
+              {game === "2048"
+                ? "It unlocks after the Snake run is verified. Real 2048 sessions appear here as soon as they are written to runs/2048."
+                : game === "doom"
+                  ? "Doom runs in our own copy of the engine. A run started with python -m laya_agent.doom.runner appears here as soon as it writes to runs/doom."
+                  : `Real ${name} sessions appear here as soon as the runner writes them.`}
+            </p>
           </>
         ) : (
           <>
-            <h1>No simulator run for {name} in the loaded folders.</h1>
-            <p>Simulator runs are test runs on the local simulator, never arena results.</p>
+            <h1>{game === "doom" ? "No Doom test run in the loaded folders." : `No simulator run for ${name} in the loaded folders.`}</h1>
+            <p>{game === "doom" ? "Test runs are evaluation episodes in runs_sim_doom*, never judged results." : "Simulator runs are test runs on the local simulator, never arena results."}</p>
           </>
         )}
         <div className="empty-actions">
           {source === "arena" ? (
             <button type="button" className="btn" disabled={!other} onClick={() => chooseSource("simulator")}>
-              View simulator runs for {name}
+              {game === "doom" ? "View Doom test runs" : `View simulator runs for ${name}`}
             </button>
           ) : (
             <button type="button" className="btn" disabled={!other} onClick={() => chooseSource("arena")}>
-              View arena sessions for {name}
+              {game === "doom" ? "View real Doom runs" : `View arena sessions for ${name}`}
             </button>
           )}
         </div>
@@ -77,6 +83,7 @@ export function ArenaView() {
   const hasFeed = useStore((s) => !!s.feed);
   const error = useStore((s) => (s.feed && !s.feed.loaded ? s.feed.error : null));
   const history = frame.mode === "history";
+  const source = useStore((s) => s.source);
 
   if (!hasFeed) return <EmptyState />;
   if (error) {
@@ -106,7 +113,9 @@ export function ArenaView() {
             </div>
           </div>
           <div className="board-stage">
-            {envKind === "simulator" ? <span className="sim-tag">Simulator run, not an arena result</span> : null}
+            {envKind === "simulator" || (game === "doom" && source === "simulator") ? (
+              <span className="sim-tag">{game === "doom" ? "Test run, not a judged result" : "Simulator run, not an arena result"}</span>
+            ) : null}
             <ArenaStage game={game} frame={frame.board} />
           </div>
         </section>
