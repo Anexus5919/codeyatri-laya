@@ -1,113 +1,109 @@
-# laya-game-agent
+# CodeYatri: teaching Laya to play
 
-A decision layer that plays hosted games through their agent APIs, where **every move is chosen by a visible, logged call to [Laya](https://github.com/NandhaKishorM/laya)**, a small open-weight decision model. Built for PS 02, "Beat the Bot: Teach Laya to Play".
+Team **CodeYatri** for Genesis 2.0, PS 02 "Beat the Bot: Teach Laya to Play": Adarsh Singh (lead), Piyush Shukla, Mayuresh Sarkale, Vidushi Singh.
 
-The bot reads the game state, turns it into a short factual description plus typed questions, asks Laya, checks that the answer maps to a legal move, writes the whole decision to a JSONL log, and only then sends the move.
+A decision layer that plays the hosted games on [topgameai.com/arena](https://topgameai.com/arena) through their agent API. **Every move comes from a visible, logged call to [Laya](https://github.com/NandhaKishorM/laya)**, a small open-weight decision model. Python reads the game, writes true facts about each possible move, asks Laya one yes/no question per direction, plays Laya's highest-rated move, and logs the decision before sending it.
 
-> Status: the reusable foundation is done and tested against real Laya. The hosted game adapters are written on hackathon day, when the game APIs are revealed. Nothing in this repo guesses an endpoint, a field name or a score.
+## Verified results (real arena sessions)
 
-## Why Laya, and why the question design matters
+| Game | Session id | Points | Notes |
+|---|---|---|---|
+| Snake | `2ba7267e-def5-4fdc-aa53-0a249329eab9` | **1000** (15 of 15 foods, 127 moves) | Base Laya `english`, zero-shot, no fallback moves, log verified |
+| 2048 | pending unlock | | Fine-tuned Laya, see below |
 
-Laya answers `choice`, `score` and yes/no (`noul`) questions in one forward pass, locally, in about 30 to 40 ms on a T4 GPU (maintainer figure) or about 400 ms on our laptop CPU (measured). It does not generate text, so every decision comes with a full probability distribution we can log and audit.
-
-It is not a game engine. Out of the box it is weak at decisions: in our first test it gave the *correct* move the *lowest* probability, and reversing the option order flipped its answer. How we phrase the state, the options and the questions is the main lever, and `docs/experiments.md` records what we tried and what changed.
-
-Offline, on 54 fixed test states (chance 0.53):
-
-| How we asked | Picked a good move |
-|---|---|
-| One `choice` question over all moves (best of five wordings) | 0.61 to 0.69 |
-| One yes/no question per move, same forward pass (current default) | 1.00 (0.96 with numbers only) |
+Every real session, including failed or abandoned ones, is listed in [`docs/results.md`](docs/results.md). The logs are in [`runs/`](runs/).
 
 ## How a move is made
 
 ```mermaid
 flowchart LR
-    API[Game API] --> C[Client] --> A[Adapter: validate, legal moves, facts]
-    A --> Q[Question design] --> L[Laya Router.predict]
-    L --> V[Validate answer] --> LOG[(JSONL log)]
-    LOG --> S[Submit move] --> API
-    LOG --> VW[Live viewers]
+    A[Arena API: state] --> F[Python: one-move facts per direction]
+    F --> Q[One yes/no question per legal direction]
+    Q --> L[Laya, one forward pass]
+    L --> P[Probabilities over up/down/left/right]
+    P --> G[(Log decision, fsync)]
+    G --> S[Send Laya's move] --> A
+    G --> V[Live decision viewer]
 ```
 
-1. **Input.** The game client fetches the state. The adapter validates it, reads the legal moves from the server, and writes one short factual line per move (what the move changes). It never invents missing fields.
-2. **Question.** A question design builds Laya's typed questions. Labels map to legal moves only.
-3. **Decision.** Laya answers. The move is Laya's `choice`, or one of two logged aggregates of Laya's own probabilities from the same forward pass (mean over option orders, or the highest per-move P(true)).
-4. **Validation.** The answer must map to exactly one current legal move, with sane probabilities and no options lost to the token budget. Otherwise the bot logs it and pauses. **There is no fallback move anywhere.**
-5. **Log, then act.** The decision is fsynced to the log before the move is sent. Timeouts after sending are reconciled against fresh state, never blindly resent.
+1. **Facts, never verdicts.** For each direction Python states what the move does right now: wall or body hit, food eaten, distance to the food before and after, open space left; for 2048, whether the largest tile stays in its corner, board order, empty cells, merges. It never says which move is best, and never looks more than one move ahead.
+2. **One Laya call per move.** One `noul` (yes/no) question per legal direction, answered in a single pass. The four P(true) values are normalised into the required probability block, and the highest is the move.
+3. **Log before act.** The decision is written and fsynced before the move is sent. Each log line is hash-chained (`hash = sha256(prev_hash + "|" + canonical JSON)`), exactly as the participant guide specifies.
+4. **Safe API handling.** A move is sent once. If a response is lost, the session is read back from the server instead of resending, so no move is ever applied twice.
+5. **Fallback.** A rule-based safety move is allowed by the rules for at most 10% of moves. Our verified Snake run used none.
 
-`python -m laya_agent.audit <log>` checks from the log alone that every submitted move traces to an earlier, valid Laya decision.
+## What we ask Laya, and why
 
-## Setup
+The problem statement says teams using the same model will score very differently. These measured findings are why ours works ([`docs/experiments.md`](docs/experiments.md) has the full log):
+
+| Finding | Before | After |
+|---|---|---|
+| One yes/no per move instead of one multiple-choice question (grid test) | 0.61 to 0.69 | 1.00 |
+| Remove the direction word from the question; Laya's prior for "right" was outweighing the facts (Snake) | 0.61 | 0.99 |
+| Priorities line in every question (without it Laya picked fatal moves) | 43 fatal picks in 200 | 0 |
+| Eat fact worded like the options Laya already reads well | circled the food for 300 moves | wins |
+| "Moves since the last food" fact, so a deterministic model cannot repeat the same loop | 1 game stuck | 20 of 20 won in simulation |
+
+## 2048: fine-tuned Laya
+
+Zero-shot Laya never reached a 512 tile in 14 simulated games, even with good facts. A program that follows the stated priorities exactly from the same facts reaches 512 in 75% of games, which showed the facts carry the signal and Laya's reading was the bottleneck. The organisers confirmed fine-tuning Laya is allowed, so:
+
+- **Dataset (built by us, kept private on Kaggle):** 2048 boards from our local simulator, the exact questions our bot asks, and true/false labels from the stated priorities applied to one-move facts. No search, no other model. Built by [`scripts/make_2048_dataset.py`](scripts/make_2048_dataset.py); round 2 adds the boards our fine-tuned Laya itself reaches.
+- **Training:** Laya's official `laya-train` / `laya.train.finetune`, on a laptop RTX 3050 (decision head) and on Kaggle T4 GPUs (full model, [`notebooks/kaggle_finetune_2048.py`](notebooks/kaggle_finetune_2048.py)).
+- **Result so far:** held-out yes/no agreement 0.49 to 0.83, calibration error 0.084 to 0.015; simulator games reaching 512 went from 0% to about 27% (head only). Full-model results are being added.
+
+The move is still always Laya's own answer; only the checkpoint changes.
+
+## Run it
 
 Python 3.10 or newer.
 
 ```bash
 python -m venv .venv
-# Windows: .venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
+.venv\Scripts\activate                 # macOS/Linux: source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env        # fill in once the game APIs are published
-```
+# GPU: install the CUDA build of torch from pytorch.org into the same environment
 
-`pip install` pins `laya==0.4.6`. The first Laya call downloads the English checkpoint (about 0.8 GB) to the Hugging Face cache.
+# live decision viewer (keep it visible while the bot plays)
+python -m laya_agent.viewer.arena_web runs --port 8770     # http://127.0.0.1:8770
 
-**GPU (optional, recommended for real-time games).** The default Windows torch wheel is CPU-only. Install the CUDA build of torch from pytorch.org into the same environment, then set `BOT_DEVICE=cuda`. On Colab, open a GPU runtime and run the same `pip install`.
+# one real session on the arena, agent name CodeYatri
+python -m laya_agent.arena.runner --game snake
+python -m laya_agent.arena.runner --game 2048 --style v3 --model <fine-tuned checkpoint dir>
 
-## Run
+# local simulators (test only, never reported as results)
+python -m laya_agent.arena.runner --game snake --sim --seed 1
+python scripts/eval_arena.py --game snake --games 10
 
-```bash
-python scripts/smoke_laya.py                       # real Laya: load time, latency, output shape
-python -m laya_agent.run --game fixture --seed 0   # LOCAL TEST FIXTURE, not a hosted game
-python -m laya_agent.viewer.web logs/              # live viewer at http://127.0.0.1:8765
-python -m laya_agent.viewer.terminal logs/         # follow the newest log in a second terminal
-python -m laya_agent.audit logs/<run>.jsonl        # traceability check
-python scripts/eval_designs.py                     # compare question designs on fixed states
 pytest -q
 ```
 
-The coin-grid fixture exists only to exercise the loop, logs and viewers before the official games exist. Every event it produces carries `env: LOCAL_FIXTURE`, and its scores are never reported as results.
+Each session writes three files to `runs/<game>/`: `<session_id>.jsonl` (the submission log, hash-chained), `<session_id>.events.jsonl` (facts and raw P(true) for the viewer) and `<session_id>.final.json` (the game's final response, saved the moment it ends). The runner prints a verifier report at the end: hash chain, contiguous steps, decision blocks, fallback share, and a match against the final response.
 
-## Viewers
+## Stage 3 (Doom-style)
 
-- **Terminal:** the bot prints each decision as it happens: the probability of every legal move, the chosen one marked, confidence and latency.
-- **Web page:** `python -m laya_agent.viewer.web logs/` serves a page that polls the newest log every 0.5 s and shows the latest decision (state, question, every option's probability and description) and an event feed.
-
-Both read the same events the bot writes to disk, so what is shown live is exactly what is saved.
-
-## Decision logs
-
-One JSON object per line in `logs/<run_id>_<game>.jsonl`, written and fsynced as each event happens. The schema is in `docs/architecture.md`. Each `decision` event holds the exact question sent, the raw Laya response, every probability, the chosen move, the token-budget report and the latency. Secrets are redacted.
-
-Best runs and their session ids are listed in `docs/results.md` once we have verified hosted runs.
-
-## Configuration
-
-All settings are environment variables (see `.env.example`): checkpoint (`BOT_LAYA_MODEL`), device, question design (`BOT_QUESTION_DESIGN`), game base URL and token, HTTP timeouts and retries, loop limits, log directory and viewer port.
+Revealed only after 2048, so there is no time to train. We use the zero-shot method that took Snake to 1000: [`grid_facts.py`](src/laya_agent/arena/grid_facts.py) computes the same per-direction facts for any grid game, and [`grid_game.py`](src/laya_agent/arena/grid_game.py) registers a new game from a short JSON field mapping (`--grid-spec`). Rehearsed on an unseen practice game: 5 of 5 wins after one mapping fix.
 
 ## Repository layout
 
 ```
 src/laya_agent/
-  config.py, contracts.py, loop.py, run.py, audit.py
-  decision/   questions.py (designs), laya_client.py (the only move chooser), validation.py
-  game/       transport.py, base.py, hosted_template.py, local_fixture.py
-  telemetry/  events.py, jsonl.py
-  viewer/     terminal.py, web.py, index.html
-scripts/      smoke_laya.py, eval_designs.py
-tests/        unit tests (a fake router lives only here)
-docs/         research.md, architecture.md, experiments.md, hackathon-day.md, evidence/
+  arena/      client.py (arena API), games.py (Snake and 2048 facts), grid_facts.py, grid_game.py,
+              decider.py (the only move chooser), spec_log.py (submission log + verifier),
+              runner.py (one session), sims.py (local test simulators)
+  viewer/     arena_web.py + arena_static/ (live decision viewer)
+  decision/, game/, telemetry/, loop.py   earlier generic engine (pre-hackathon prototype)
+scripts/      eval_arena.py, probe_snake.py, probe_2048.py, make_2048_dataset.py
+notebooks/    Kaggle fine-tuning script, Colab runner
+tests/        unit and integration tests (a fake Laya lives only here)
+docs/         experiments.md, writeup.md, results.md, decisions.md, research.md, hackathon-day.md, evidence/
+runs/         real arena session logs
 ```
 
-## What is done and what waits for hackathon day
+## Write-up
 
-| Done and tested | Waits for the official APIs |
-|---|---|
-| Laya integration verified against the installed 0.4.6 source | Endpoints, auth, state and action schemas |
-| Question designs and the evaluation script | Game-specific adapters and descriptions |
-| Loop with validation, refetch, pause, reconcile | Turn ids and idempotency semantics |
-| JSONL logging, redaction, audit | Session ids and verified scores |
-| Terminal and web viewers | Stage progression |
+[`docs/writeup.md`](docs/writeup.md): what we asked Laya, why, what failed, and what we changed.
 
 ## Attribution
 
-Laya source, docs and Python package: [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) (Apache-2.0). Model checkpoints: [convaiinnovations/laya](https://huggingface.co/convaiinnovations/laya) on Hugging Face. This project only uses Laya through its public pip package.
+Laya source, docs and Python package: [NandhaKishorM/laya](https://github.com/NandhaKishorM/laya) (Apache-2.0). Model checkpoints: [convaiinnovations/laya](https://huggingface.co/convaiinnovations/laya) on Hugging Face. Games: [TopGameAI Arena](https://topgameai.com/arena).
