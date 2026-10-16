@@ -205,3 +205,18 @@ Chance (uniform over legal moves): 0.526.
 - Interpretation: the same 512 rate, a lower ceiling. Training on its own boards did not teach recovery; it made the play more uniform and removed the 2048 games. The scoring rule (median of the best three verified runs) favours the full checkpoint.
 - Decision: the full checkpoint stays for real 2048 runs; round 2 is kept on disk only.
 - Evidence: `docs/evidence/eval_2048_kaggle_r2_seeds100.json`, `docs/evidence/eval_2048_kaggle_r2_seeds300.json`.
+
+## E14: Doom, untrained Laya vs the quick fine-tune (engine, same 11 games)
+
+- 2026-10-16. Dataset `data/ftdoom`: 7,120 decisions (64,248 yes/no questions) from offline games on the nine Freedoom E1 maps, eight Freedoom Phase 2 maps and the ViZDoom combat scenarios, labelled by the fixed priority reading of the one-step facts. Kaggle `codeyatri-laya-doom-quick`: 3,000 rows, 2 epochs, full model, 52 minutes. Held-out yes/no agreement **0.587 to 0.961**, ECE 0.028. Frozen copy: `data/ftdoom/ckpt_quick_frozen`.
+- The stuck moment from the first real-time E1M1 test (step 191): untrained Laya gave the blocked strafe 0.575 and a blind shot 0.538; the quick checkpoint gives both 0.024 and moves forward through the open way out.
+
+| policy | defend_the_center kills (3) | defend_the_line kills (2) | deadly_corridor cleared (3) | E1M1 kills / areas | E1M2 kills / areas | MAP01 kills / areas | total kills |
+|---|---|---|---|---|---|---|---|
+| random actions | 1.7 | 12 | 0 | 0 / 36 | 2 / 8 | 1 / 26 | 34 |
+| untrained Laya | 5.3 | 13.5 | 0 | 0 / 6 | 2 / 18 | 0 / 1 | 51 |
+| rule reader (labels) | 21.7 | 28 | 3 | 8 / 88 | 16 / 104 | 10 / 99 | 173 |
+| **quick fine-tune** | **23.7** | **51** | **3** | 7 / 55 | 15 / 78 | **13 / 113** | **226** |
+
+- Interpretation: fine-tuning turned Laya from near random into a player that beats the reader that labelled its data on combat (more kills in both defend scenarios, MAP01 explored furthest), while every action is still Laya's own answer (0 fallback). The reader still explores E1M1 and E1M2 more widely.
+- Evidence: `docs/evidence/eval_doom_{random,base,reader,quick}.json`; logs and demo recordings in `runs_sim_doom_eval/` (local).
