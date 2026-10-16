@@ -8,11 +8,11 @@ interface Props {
   hover: number | null;
   onHover: (i: number | null) => void;
   onSelect: (i: number) => void;
-  tone?: "ember" | "cyan" | "ivory" | "acid";
+  tone?: "ivory" | "teal" | "steel" | "muted";
   label: string;
 }
 
-export function Sparkline({ values, width, height, selected, hover, onHover, onSelect, tone = "cyan", label }: Props) {
+export function Sparkline({ values, width, height, selected, hover, onHover, onSelect, tone = "ivory", label }: Props) {
   const n = values.length;
   const pad = 4;
   const { path, area, max } = useMemo(() => {

@@ -76,20 +76,20 @@ export function SnakeScene({ frame, lowMotion, onHover }: { frame: BoardFrame; l
     const links = new THREE.InstancedMesh(linkGeo, segMat, w * h + 1);
     links.castShadow = true;
     const headGeo = roundedBox(cell * 0.9, cell * 0.62, cell * 0.9, cell * 0.2);
-    const headMat = std(PAL.head, { emissive: new THREE.Color(PAL.head), emissiveIntensity: 0.32, roughness: 0.35 });
+    const headMat = std(PAL.head, { emissive: new THREE.Color("#3fae9f"), emissiveIntensity: 0.25, roughness: 0.35 });
     const eyeGeo = new THREE.SphereGeometry(cell * 0.075, 16, 12);
     const eyeMat = new THREE.MeshBasicMaterial({ color: PAL.eye });
     const foodGeo = new THREE.OctahedronGeometry(cell * 0.3, 0);
-    const foodMat = std(PAL.food, { emissive: new THREE.Color("#d9a54a"), emissiveIntensity: 0.55, roughness: 0.3, metalness: 0.2 });
+    const foodMat = std(PAL.food, { emissive: new THREE.Color(PAL.food), emissiveIntensity: 0.45, roughness: 0.35, metalness: 0.1 });
     const traceGeo = new THREE.BoxGeometry(1, 1, 1);
     traceGeo.translate(0, 0, 0.5);
-    const traceMat = new THREE.MeshBasicMaterial({ color: PAL.trace, transparent: true, opacity: 0.95 });
+    const traceMat = new THREE.MeshBasicMaterial({ color: PAL.trace, transparent: true, opacity: 0.8 });
     const hoverGeo = new THREE.PlaneGeometry(w * cell, h * cell);
     hoverGeo.rotateX(-Math.PI / 2);
     const hoverMat = new THREE.MeshBasicMaterial({ visible: false });
     const hiGeo = new THREE.PlaneGeometry(cell * 0.94, cell * 0.94);
     hiGeo.rotateX(-Math.PI / 2);
-    const hiMat = new THREE.MeshBasicMaterial({ color: PAL.trace, transparent: true, opacity: 0.22, depthWrite: false });
+    const hiMat = new THREE.MeshBasicMaterial({ color: PAL.trace, transparent: true, opacity: 0.12, depthWrite: false });
     const all = [segGeo, segMat, linkGeo, headGeo, headMat, eyeGeo, eyeMat, foodGeo, foodMat, traceGeo, traceMat, hoverGeo, hoverMat, hiGeo, hiMat];
     return {
       segs, links, headGeo, headMat, eyeGeo, eyeMat, foodGeo, foodMat, traceGeo, traceMat, hoverGeo, hoverMat, hiGeo, hiMat,

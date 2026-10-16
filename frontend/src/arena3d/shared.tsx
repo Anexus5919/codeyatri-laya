@@ -40,7 +40,7 @@ export class LabelCache {
       const ctx = c.getContext("2d");
       if (ctx) {
         const size = text.length >= 4 ? 92 : text.length === 3 ? 112 : 138;
-        ctx.font = `700 ${size}px "JetBrains Mono Variable", Consolas, monospace`;
+        ctx.font = `600 ${size}px "IBM Plex Sans Variable", "Segoe UI", sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillStyle = color;
@@ -78,7 +78,7 @@ export function AxisLabels({ cols, rows, cell, y, rim }: { cols: number; rows: n
       },
     };
   }, [cell, rim]);
-  const color = "#ad9482";
+  const color = "#8f8a83";
   const top = -(rows / 2) * cell - rim / 2;
   const left = -(cols / 2) * cell - rim / 2;
   return (
@@ -194,11 +194,11 @@ export function Probes({ decision, anchors, cell, baseY, lowMotion }: { decision
     const disc = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
     const bar = new THREE.BoxGeometry(1, 1, 1);
     const cone = new THREE.ConeGeometry(0.5, 1, 4);
-    const chosen = std(PAL.ember, { emissive: new THREE.Color(PAL.ember), emissiveIntensity: 0.55, roughness: 0.4 });
-    const other = std("#d9c6b2", { emissive: new THREE.Color("#6d4a3c"), emissiveIntensity: 0.35, roughness: 0.6, transparent: true, opacity: 0.92 });
-    const ring = new THREE.MeshBasicMaterial({ color: "#5e2f29", transparent: true, opacity: 0.85 });
-    const ringChosen = new THREE.MeshBasicMaterial({ color: PAL.ember, transparent: true, opacity: 0.5 });
-    const cross = new THREE.MeshBasicMaterial({ color: "#7f685c", transparent: true, opacity: 0.75 });
+    const chosen = std(PAL.chosen, { emissive: new THREE.Color(PAL.chosen), emissiveIntensity: 0.45, roughness: 0.4 });
+    const other = std("#c9c4bc", { emissive: new THREE.Color("#3a3a3e"), emissiveIntensity: 0.3, roughness: 0.6, transparent: true, opacity: 0.9 });
+    const ring = new THREE.MeshBasicMaterial({ color: "#3a3a3f", transparent: true, opacity: 0.85 });
+    const ringChosen = new THREE.MeshBasicMaterial({ color: PAL.chosen, transparent: true, opacity: 0.45 });
+    const cross = new THREE.MeshBasicMaterial({ color: PAL.cross, transparent: true, opacity: 0.9 });
     return {
       column, disc, bar, cone, chosen, other, ring, ringChosen, cross,
       dispose() {
@@ -253,7 +253,6 @@ export function Probes({ decision, anchors, cell, baseY, lowMotion }: { decision
               }}
               geometry={res.column}
               material={dv.chosen ? res.chosen : res.other}
-              castShadow
             />
           </group>
         );

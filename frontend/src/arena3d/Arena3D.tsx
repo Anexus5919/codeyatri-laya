@@ -8,7 +8,6 @@ import type { BoardFrame } from "../lib/derive";
 import { store } from "../lib/store";
 import { Scene2048 } from "./Scene2048";
 import { SnakeScene } from "./SnakeScene";
-import { useDisposable } from "./shared";
 
 // @react-three/fiber 9.8 still creates a THREE.Clock internally, which three r183+ reports as deprecated.
 // Drop exactly that notice; every other three.js message goes to the console unchanged.
@@ -18,43 +17,14 @@ THREE.setConsoleFunction((type: string, message: string, ...params: unknown[]) =
   out(message, ...params);
 });
 
-function Floor() {
-  const res = useDisposable(() => {
-    const c = document.createElement("canvas");
-    c.width = c.height = 128;
-    const ctx = c.getContext("2d");
-    if (ctx) {
-      const g = ctx.createRadialGradient(64, 64, 8, 64, 64, 64);
-      g.addColorStop(0, "rgba(255,255,255,1)");
-      g.addColorStop(0.55, "rgba(255,255,255,0.55)");
-      g.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, 128, 128);
-    }
-    const alpha = new THREE.CanvasTexture(c);
-    const geo = new THREE.CircleGeometry(15, 48);
-    geo.rotateX(-Math.PI / 2);
-    const mat = new THREE.MeshStandardMaterial({ color: "#240b09", roughness: 1, metalness: 0, transparent: true, opacity: 0.75, alphaMap: alpha, depthWrite: false });
-    return {
-      geo, mat,
-      dispose() {
-        alpha.dispose();
-        geo.dispose();
-        mat.dispose();
-      },
-    };
-  }, []);
-  return <mesh geometry={res.geo} material={res.mat} position={[0, -0.26, 0]} receiveShadow />;
-}
-
 function Lights() {
   return (
     <>
-      <hemisphereLight args={["#ffe9d6", "#2a0b08", 1.7]} />
+      <hemisphereLight args={["#f3efe8", "#1a1a1d", 1.6]} />
       <directionalLight
         position={[-6, 14, 7]}
         intensity={3.4}
-        color="#ffe6d2"
+        color="#fbf6ee"
         castShadow
         shadow-mapSize-width={1024}
         shadow-mapSize-height={1024}
@@ -66,8 +36,7 @@ function Lights() {
         shadow-camera-far={40}
         shadow-bias={-0.0004}
       />
-      <pointLight position={[0, 4, -10]} intensity={60} distance={30} color="#ff5b37" />
-      <pointLight position={[9, 3, 9]} intensity={18} distance={26} color="#46d6e8" />
+      <pointLight position={[0, 5, -10]} intensity={26} distance={30} color="#d8dde3" />
     </>
   );
 }
@@ -108,7 +77,6 @@ export default function Arena3D({ game, frame, lowMotion, onHover }: { game: str
     >
       <Housekeeping />
       <Lights />
-      <Floor />
       {game === "snake" ? <SnakeScene frame={frame} lowMotion={lowMotion} onHover={onHover} /> : <Scene2048 frame={frame} lowMotion={lowMotion} onHover={onHover} />}
     </Canvas>
   );

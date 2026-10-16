@@ -26,12 +26,12 @@ function Svg({ size = 20, className, title, children, viewBox = "0 0 24 24" }: P
 export function BrandMark({ size = 34 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden="true" focusable="false" className="brand-mark">
-      <rect x="1" y="1" width="38" height="38" rx="10" fill="var(--c-surface-3)" stroke="var(--c-line-strong)" />
-      <path d="M20 6 L25 15 H15 Z" fill="var(--c-ember)" />
-      <path d="M20 34 L15 25 H25 Z" fill="var(--c-burgundy)" stroke="var(--c-crimson)" strokeWidth="0.8" />
-      <path d="M6 20 L15 15 V25 Z" fill="var(--c-burgundy)" stroke="var(--c-crimson)" strokeWidth="0.8" />
-      <path d="M34 20 L25 25 V15 Z" fill="var(--c-burgundy)" stroke="var(--c-crimson)" strokeWidth="0.8" />
-      <circle cx="20" cy="20" r="3.2" fill="var(--c-ivory)" />
+      <rect x="1" y="1" width="38" height="38" rx="10" fill="var(--c-surface-2)" stroke="var(--c-line-strong)" />
+      <path d="M20 6 L25 15 H15 Z" fill="var(--c-red)" />
+      <path d="M20 34 L15 25 H25 Z" fill="var(--c-text-4)" />
+      <path d="M6 20 L15 15 V25 Z" fill="var(--c-text-4)" />
+      <path d="M34 20 L25 25 V15 Z" fill="var(--c-text-4)" />
+      <circle cx="20" cy="20" r="3.2" fill="var(--c-text)" />
     </svg>
   );
 }
@@ -171,6 +171,14 @@ export function IconAudit({ size = 22 }: P) {
       <rect x="9" y="9" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
       <rect x="15.5" y="9" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
       <path d="M12 3 V7 M12 17 V21" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function IconBoard({ size = 22 }: P) {
+  return (
+    <Svg size={size}>
+      <path d="M9 20 V8 H15 V20 M3 20 V12 H9 M15 20 V14 H21 V20 M2 20 H22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
     </Svg>
   );
 }

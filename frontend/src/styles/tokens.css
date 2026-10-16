@@ -1,82 +1,68 @@
 /* Design tokens for the CodeYatri decision arena.
+   Graphite base, ivory text. Red is reserved for the brand mark and the one chosen move.
    Breakpoints (media queries cannot read custom properties, so they are listed here and used literally):
-   --bp-sm 600px, --bp-md 900px, --bp-lg 1200px, --bp-xl 1600px */
+   600px, 720px, 1100px, 1280px, 1500px */
 
 :root {
-  /* Surfaces: near-black oxblood, from the page floor up to raised instruments */
-  --c-floor: #0b0404;
-  --c-bg: #120706;
-  --c-surface-1: #190a09;
-  --c-surface-2: #21100e;
-  --c-surface-3: #2c1512;
-  --c-surface-4: #3a1c18;
-  --c-line: #3f1f1b;
-  --c-line-strong: #5e2f29;
-  --c-line-soft: rgba(214, 140, 120, 0.12);
+  /* Surfaces: neutral graphite, the faintest warm tint */
+  --c-floor: #0f0f10;
+  --c-bg: #121213;
+  --c-surface-1: #18181a;
+  --c-surface-2: #1d1d20;
+  --c-surface-3: #242427;
+  --c-line: #29292d;
+  --c-line-strong: #3a3a3f;
 
-  /* Identity */
-  --c-burgundy: #5c141b;
-  --c-crimson: #a3212b;
+  /* Text: ivory, three steps (all at least 4.5:1 on --c-bg) */
+  --c-text: #ece7df;
+  --c-text-2: #bab4ab;
+  --c-text-3: #8f8a83;
+  --c-text-4: #6c6863;
 
-  /* Text: warm ivory */
-  --c-ivory: #f6ecdc;
-  --c-ivory-2: #d9c6b2;
-  --c-ivory-3: #ad9482;
-  --c-ivory-4: #7f685c;
+  /* Reserved accent: brand mark and the chosen move only */
+  --c-red: #e5484d;
+  --c-red-soft: rgba(229, 72, 77, 0.12);
 
-  /* Signals */
-  --c-ember: #ff5b37;
-  --c-ember-2: #ff8a5c;
-  --c-ember-soft: rgba(255, 91, 55, 0.14);
-  --c-ember-line: rgba(255, 91, 55, 0.55);
-  --c-cyan: #46d6e8;
-  --c-cyan-soft: rgba(70, 214, 232, 0.13);
-  --c-acid: #b8f53c;
-  --c-acid-soft: rgba(184, 245, 60, 0.12);
-  --c-amber: #ffb43a;
-  --c-amber-soft: rgba(255, 180, 58, 0.14);
-  --c-reject: #ff5f7e;
-  --c-reject-soft: rgba(255, 95, 126, 0.14);
-  --c-sim: #9fb9c4;
-  --c-sim-soft: rgba(159, 185, 196, 0.12);
+  /* Semantic, used sparingly */
+  --c-green: #63c18f;
+  --c-green-soft: rgba(99, 193, 143, 0.12);
+  --c-amber: #e8a33d;
+  --c-amber-soft: rgba(232, 163, 61, 0.12);
+  --c-sim: #93a8b6;
+  --c-sim-soft: rgba(147, 168, 182, 0.12);
 
-  /* Type */
-  --font-ui: "Bricolage Grotesque Variable", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono Variable", "Cascadia Mono", Consolas, ui-monospace, monospace;
-  --fs-2xs: 10.5px;
-  --fs-xs: 11.5px;
-  --fs-sm: 12.5px;
+  /* Type: IBM Plex Sans for text and numbers, IBM Plex Mono for ids, hashes and raw question text */
+  --font-ui: "IBM Plex Sans Variable", "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
   --fs-md: 14px;
   --fs-lg: 16px;
   --fs-xl: 20px;
   --fs-2xl: 26px;
-  --fs-3xl: 36px;
-  --lh-tight: 1.15;
+  --fs-3xl: 34px;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semi: 600;
   --lh-body: 1.45;
-  --track-label: 0.08em;
 
   /* Space */
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
   --sp-4: 16px;
-  --sp-5: 20px;
-  --sp-6: 28px;
-  --sp-7: 40px;
-  --gutter: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --gutter: 20px;
 
   /* Radii */
-  --r-xs: 3px;
   --r-sm: 6px;
   --r-md: 10px;
   --r-lg: 14px;
   --r-pill: 999px;
 
-  /* Glow */
-  --glow-ember: 0 0 0 1px var(--c-ember-line), 0 0 22px rgba(255, 91, 55, 0.22);
-  --glow-cyan: 0 0 0 1px rgba(70, 214, 232, 0.45), 0 0 18px rgba(70, 214, 232, 0.18);
-  --glow-acid: 0 0 0 1px rgba(184, 245, 60, 0.45), 0 0 18px rgba(184, 245, 60, 0.16);
-  --shadow-1: 0 1px 0 rgba(255, 230, 210, 0.04) inset, 0 10px 30px rgba(0, 0, 0, 0.35);
+  /* Glow: only the chosen move gets one */
+  --glow-chosen: 0 0 0 1px rgba(229, 72, 77, 0.45);
 
   /* Motion (mirrored in src/lib/motion.ts) */
   --dur-fast: 140ms;
@@ -84,22 +70,17 @@
   --dur-slow: 420ms;
   --dur-trace: 700ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
   /* Layers */
-  --z-backdrop: 0;
   --z-base: 1;
-  --z-sticky: 10;
   --z-rail: 20;
-  --z-overlay: 30;
-  --z-toast: 40;
   --z-tooltip: 50;
 
   /* Layout */
-  --rail-w: 76px;
+  --rail-w: 68px;
   --top-h: 60px;
-  --panel-w: clamp(360px, 30vw, 500px);
-  --focus: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-cyan);
+  --panel-w: clamp(340px, 26vw, 440px);
+  --focus: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-text);
 }
 
 :root[data-motion="low"] {

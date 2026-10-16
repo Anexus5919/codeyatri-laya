@@ -1,8 +1,9 @@
 import { envLabel, statusText } from "../lib/derive";
+import type { DecisionView } from "../lib/derive";
 import type { EnvKind, Status, Summary } from "../lib/types";
-import { AppliedGlyph, FallbackGlyph, GlobeGlyph, PendingGlyph, RejectedGlyph, SimGlyph } from "./Glyphs";
+import { FallbackGlyph, GlobeGlyph, SimGlyph } from "./Glyphs";
 
-export function EnvBadge({ kind, env, compact = false }: { kind: EnvKind | undefined; env?: string | null; compact?: boolean }) {
+export function EnvBadge({ kind, env }: { kind: EnvKind | undefined; env?: string | null }) {
   const k = kind ?? "unknown";
   const title =
     k === "hosted"
@@ -11,9 +12,9 @@ export function EnvBadge({ kind, env, compact = false }: { kind: EnvKind | undef
         ? `Local simulator session (env ${env ?? "not logged"}): a test run, never an arena result`
         : "The session_start event has no env label";
   return (
-    <span className={`badge env env-${k}`} title={title}>
+    <span className={`env-badge env-${k}`} title={title}>
       {k === "hosted" ? <GlobeGlyph size={13} /> : <SimGlyph size={13} />}
-      <span>{compact ? (k === "hosted" ? "HOSTED" : k === "simulator" ? "SIM" : "ENV ?") : envLabel(k).toUpperCase()}</span>
+      <span>{k === "hosted" ? "Hosted arena" : k === "simulator" ? "Simulator run" : envLabel(k)}</span>
     </span>
   );
 }
@@ -21,62 +22,33 @@ export function EnvBadge({ kind, env, compact = false }: { kind: EnvKind | undef
 export function StatusBadge({ status, summary, ageS }: { status: Status | undefined | null; summary?: Summary | null; ageS?: number | null }) {
   const t = statusText(status, summary, ageS);
   return (
-    <span className={`badge status status-${status ?? "loading"}`} title={t.detail}>
+    <span className={`status status-${status ?? "loading"}`} title={t.detail}>
       <span className="status-dot" aria-hidden="true" />
       <span>{t.label}</span>
     </span>
   );
 }
 
-export function SourceBadge({ source, large = false }: { source: string | null | undefined; large?: boolean }) {
-  if (source === "fallback")
-    return (
-      <span className={`badge source source-fallback${large ? " large" : ""}`} title="A rule-based safety move, not Laya's pick">
-        <FallbackGlyph size={large ? 16 : 13} />
-        <span>FALLBACK</span>
+// One quiet line instead of a row of pills: who decided, and what happened to the move
+export function DecisionLine({ decision }: { decision: DecisionView }) {
+  const fallback = decision.source === "fallback";
+  const who = fallback ? "Fallback move" : decision.source === "laya" ? "Laya decided" : "Source not logged";
+  const what =
+    decision.result === "applied"
+      ? "applied"
+      : decision.result === "rejected"
+        ? "rejected by the game"
+        : decision.result === "awaiting"
+          ? "waiting for the game"
+          : decision.result === "unsent"
+            ? "never sent, the session ended"
+            : String(decision.result);
+  return (
+    <p className={`decision-line${fallback ? " is-fallback" : ""}${decision.result === "rejected" ? " is-rejected" : ""}`}>
+      {fallback ? <FallbackGlyph size={14} /> : null}
+      <span>
+        {who}, {what}
       </span>
-    );
-  if (source === "laya")
-    return (
-      <span className={`badge source source-laya${large ? " large" : ""}`} title="The move is Laya's highest yes-probability">
-        <span className="laya-dot" aria-hidden="true" />
-        <span>LAYA</span>
-      </span>
-    );
-  return <span className="badge source source-unknown">SOURCE n/a</span>;
-}
-
-export function ResultBadge({ result }: { result: string | null | undefined }) {
-  switch (result) {
-    case "applied":
-      return (
-        <span className="badge result result-applied">
-          <AppliedGlyph size={13} />
-          <span>APPLIED</span>
-        </span>
-      );
-    case "rejected":
-      return (
-        <span className="badge result result-rejected">
-          <RejectedGlyph size={13} />
-          <span>REJECTED</span>
-        </span>
-      );
-    case "awaiting":
-      return (
-        <span className="badge result result-awaiting" title="Decision logged, move sent or about to be sent, no game response logged yet">
-          <PendingGlyph size={13} />
-          <span>AWAITING GAME</span>
-        </span>
-      );
-    case "unsent":
-      return (
-        <span className="badge result result-unsent" title="The session ended before this decision became a logged move">
-          <PendingGlyph size={13} />
-          <span>NOT SENT</span>
-        </span>
-      );
-    default:
-      return <span className="badge result">{String(result ?? "n/a").toUpperCase()}</span>;
-  }
+    </p>
+  );
 }

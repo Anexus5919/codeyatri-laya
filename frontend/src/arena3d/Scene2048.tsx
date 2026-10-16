@@ -67,7 +67,7 @@ export function Scene2048({ frame, lowMotion, onHover }: { frame: BoardFrame; lo
     const hoverGeo = new THREE.PlaneGeometry(BOARD, BOARD);
     hoverGeo.rotateX(-Math.PI / 2);
     const hoverMat = new THREE.MeshBasicMaterial({ visible: false });
-    const hiMat = new THREE.MeshBasicMaterial({ color: PAL.trace, transparent: true, opacity: 0.25, depthWrite: false });
+    const hiMat = new THREE.MeshBasicMaterial({ color: PAL.trace, transparent: true, opacity: 0.14, depthWrite: false });
     const hiGeo = new THREE.PlaneGeometry(cell * 0.94, cell * 0.94);
     hiGeo.rotateX(-Math.PI / 2);
     const mats = new Map<number, THREE.MeshStandardMaterial>();
@@ -79,7 +79,7 @@ export function Scene2048({ frame, lowMotion, onHover }: { frame: BoardFrame; lo
         let m = mats.get(v);
         if (!m) {
           const c = tileColors(v);
-          m = std(c.fill, { roughness: 0.38, metalness: 0.06, emissive: new THREE.Color(c.fill), emissiveIntensity: v >= 128 ? 0.28 : 0.1 });
+          m = std(c.fill, { roughness: 0.45, metalness: 0.04, emissive: new THREE.Color(c.fill), emissiveIntensity: v >= 256 ? 0.18 : 0.08 });
           mats.set(v, m);
         }
         return m;

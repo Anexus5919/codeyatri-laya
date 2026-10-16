@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, 
 import { DIR_LABEL, fmtP } from "../lib/derive";
 import { backToLive, enterHistory, stepBy, useStore } from "../lib/store";
 import type { StepRecord } from "../lib/types";
-import { AppliedGlyph, FallbackGlyph, IconChevron, IconLive, PendingGlyph, RejectedGlyph } from "./Glyphs";
+import { IconChevron, IconLive } from "./Glyphs";
 
 const H = 74;
 const BASE = 46;
@@ -132,7 +132,9 @@ export function Timeline() {
       <div className="timeline-head">
         <div className="timeline-title">
           <h2>Timeline</h2>
-          <span className="sub mono">{n ? `${n} logged lines` : "waiting for lines"}</span>
+          <span className="sub num" title="Bar height: Laya's yes-probability for the move that was sent. Triangle: fallback move. Cross: rejected by the game.">
+            {n ? `${n} lines` : "waiting for lines"}
+          </span>
         </div>
         <div className="timeline-controls">
           <button type="button" className="icon-btn" onClick={() => stepBy(-1)} disabled={!n || sel === 0} aria-label="Previous line">
@@ -143,7 +145,7 @@ export function Timeline() {
           </button>
           <button type="button" className={`btn-live${sel === null ? " is-live" : ""}`} onClick={backToLive} disabled={sel === null} aria-label={sel === null ? "Following live" : "Back to live"}>
             <IconLive size={14} />
-            <span>{sel === null ? "Following live" : `Back to live${newSince ? ` (+${newSince} new)` : ""}`}</span>
+            <span>{sel === null ? (status === "live" ? "Following live" : "Latest") : `Back to live${newSince ? ` (+${newSince})` : ""}`}</span>
           </button>
         </div>
       </div>
@@ -189,25 +191,6 @@ export function Timeline() {
           </div>
         ) : null}
       </div>
-      <ul className="legend" aria-label="Timeline legend">
-        <li>
-          <span className="lg lg-applied" aria-hidden="true" /> <AppliedGlyph size={12} /> applied, bar height = Laya's yes-probability of the sent move
-        </li>
-        <li>
-          <FallbackGlyph size={12} className="c-amber" /> fallback move
-        </li>
-        <li>
-          <RejectedGlyph size={12} className="c-reject" /> rejected by the game
-        </li>
-        <li>
-          <span className="lg lg-half" aria-hidden="true" /> dashed guide = 0.5
-        </li>
-        {pending && status !== "finished" ? (
-          <li>
-            <PendingGlyph size={12} className="c-ember" /> step {pending.step} decided, awaiting the game
-          </li>
-        ) : null}
-      </ul>
     </section>
   );
 }

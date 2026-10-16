@@ -38,7 +38,7 @@ export function use3D(game: string | null | undefined): { use3d: boolean; reason
   const renderer = useStore((s) => s.renderer);
   const webgl = useStore((s) => s.webgl);
   const supported = useWebglSupport();
-  if (game !== "snake" && game !== "2048") return { use3d: false, reason: "3D view covers Snake and 2048; this game is drawn from its logged grid" };
+  if (game !== "snake" && game !== "2048") return { use3d: false, reason: null };
   if (renderer === "2d") return { use3d: false, reason: null };
   if (!supported || webgl === "unavailable") return { use3d: false, reason: "WebGL is not available in this browser, showing the 2D board" };
   if (webgl === "lost") return { use3d: false, reason: "The WebGL context was lost, showing the 2D board" };
@@ -59,7 +59,7 @@ export function ArenaStage({ game, frame }: { game: string | null | undefined; f
             fallback={
               <div className="stage-loading">
                 {svg}
-                <span className="chip chip-info">Loading 3D arena</span>
+                <span className="stage-note">Loading the 3D board</span>
               </div>
             }
           >
@@ -69,9 +69,11 @@ export function ArenaStage({ game, frame }: { game: string | null | undefined; f
       ) : (
         svg
       )}
-      <div className="stage-hover mono" aria-hidden="true">
-        {hover ?? (game === "2048" ? "Point at or tap a tile to read grid[row][col]" : "Point at or tap a cell to read its coordinates")}
-      </div>
+      {hover ? (
+        <div className="stage-hover" aria-hidden="true">
+          {hover}
+        </div>
+      ) : null}
       {reason ? <div className="stage-note">{reason}</div> : null}
     </div>
   );
@@ -85,7 +87,7 @@ export function RendererToggle({ game }: { game: string | null | undefined }) {
   const can3d = supported && webgl !== "unavailable";
   const is3d = renderer !== "2d" && can3d && webgl !== "lost";
   return (
-    <div className="seg" role="group" aria-label="Board renderer">
+    <div className="seg seg-small" role="group" aria-label="Board renderer">
       <button type="button" aria-pressed={is3d} disabled={!can3d} title={can3d ? "Three.js arena" : "WebGL unavailable"} onClick={() => setRenderer("3d")}>
         3D
       </button>

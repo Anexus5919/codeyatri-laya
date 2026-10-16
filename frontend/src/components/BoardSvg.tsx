@@ -191,7 +191,7 @@ function GenericSvg({ frame, onHover }: { frame: BoardFrame; onHover: HoverFn })
       </svg>
       <figcaption className="generic-legend">
         <span>
-          Drawn from <code>state.{found.key}</code>; numbers are the logged cell codes. Letters mark position fields:
+          From <code>state.{found.key}</code>, numbers are the logged cell codes.
         </span>
         <span className="legend-items">
           {[...new Set(markers.map((m) => m.key))].map((k) => (
@@ -205,7 +205,6 @@ function GenericSvg({ frame, onHover }: { frame: BoardFrame; onHover: HoverFn })
             </span>
           ))}
         </span>
-        {frame.probes && player ? <span>Probes around <code>{player.key}</code> show Laya's yes-probability per asked direction.</span> : null}
       </figcaption>
     </figure>
   );
