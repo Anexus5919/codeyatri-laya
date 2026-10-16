@@ -61,7 +61,7 @@ export function fmtTs(ts: unknown): string {
 export const DIR_LABEL: Record<Act, string> = {
   up: "Up", down: "Down", left: "Left", right: "Right",
   shoot: "Shoot", turn_left: "Turn left 5°", turn_right: "Turn right 5°", turn_left_big: "Turn left 30°",
-  turn_right_big: "Turn right 30°", forward: "Forward", backward: "Back", strafe_left: "Strafe left",
+  turn_right_big: "Turn right 30°", turn_around: "Turn around", forward: "Forward", backward: "Back", strafe_left: "Strafe left",
   strafe_right: "Strafe right", use: "Use (door)",
 };
 

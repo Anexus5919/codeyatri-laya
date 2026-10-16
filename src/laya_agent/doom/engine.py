@@ -16,7 +16,7 @@ import vizdoom as vzd
 B = vzd.Button
 GV = vzd.GameVariable
 
-ACTIONS = ("shoot", "turn_left", "turn_right", "turn_left_big", "turn_right_big",
+ACTIONS = ("shoot", "turn_left", "turn_right", "turn_left_big", "turn_right_big", "turn_around",
            "forward", "backward", "strafe_left", "strafe_right", "use")
 TURN_SMALL = 5.0   # fine aim: an enemy 400 units away is about 5 degrees wide
 TURN_BIG = 30.0
@@ -42,6 +42,7 @@ ACTION_BUTTONS = {
     "turn_right": _vec(TURN_LEFT_RIGHT_DELTA=TURN_SMALL / HOLD_TICS),
     "turn_left_big": _vec(TURN_LEFT_RIGHT_DELTA=-TURN_BIG / HOLD_TICS),
     "turn_right_big": _vec(TURN_LEFT_RIGHT_DELTA=TURN_BIG / HOLD_TICS),
+    "turn_around": _vec(TURN_LEFT_RIGHT_DELTA=180.0 / HOLD_TICS),
     "forward": _vec(MOVE_FORWARD=1, SPEED=1),
     "backward": _vec(MOVE_BACKWARD=1, SPEED=1),
     "strafe_left": _vec(MOVE_LEFT=1, SPEED=1),
@@ -55,7 +56,7 @@ RELEASE = [0.0] * len(BUTTONS)
 # and tests) holds every action for HOLD_TICS tics instead.
 MOVES = ("forward", "backward", "strafe_left", "strafe_right")
 REALTIME_BUTTONS = {a: list(v) for a, v in ACTION_BUTTONS.items()}
-for _a in ("turn_left", "turn_right", "turn_left_big", "turn_right_big"):
+for _a in ("turn_left", "turn_right", "turn_left_big", "turn_right_big", "turn_around"):
     REALTIME_BUTTONS[_a][_IDX[B.TURN_LEFT_RIGHT_DELTA]] *= HOLD_TICS
 REALTIME_TICS = {"shoot": 2, "use": 2}
 

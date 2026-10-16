@@ -82,6 +82,13 @@ export function DirGlyph({ dir, size = 22, className, title }: P & { dir: Act })
         <circle cx="14.6" cy="12.5" r="1.4" fill="currentColor" />
       </Svg>
     );
+  if (dir === "turn_around")
+    return (
+      <Svg size={size} className={className} title={title}>
+        <path d="M8 20 V10 a4.5 4.5 0 0 1 9 0 V14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M13.2 13.2 L17 18.5 L20.8 13.2 Z" fill="currentColor" />
+      </Svg>
+    );
   const left = dir === "turn_left" || dir === "turn_left_big";
   return <TurnGlyph left={left} big={dir === "turn_left_big" || dir === "turn_right_big"} size={size} className={className} title={title} />;
 }

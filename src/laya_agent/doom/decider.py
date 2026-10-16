@@ -7,9 +7,11 @@ the same way a 2048 move that changes nothing is not offered.
 
 from __future__ import annotations
 
+import json
 import math
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from .engine import ACTIONS
@@ -55,6 +57,11 @@ class DoomDecider:
         self.model = model
         self.agent = None
         self.info: dict = {}
+        # A fine-tuned checkpoint lists the questions it was trained on; it is only asked about those actions
+        self.supported: set[str] | None = None
+        qfile = Path(self.model_source) / "questions.json"
+        if qfile.is_file():
+            self.supported = {k[2:] for k in json.loads(qfile.read_text(encoding="utf-8")) if k.startswith("q_")}
 
     def load(self) -> dict:
         try:
@@ -80,6 +87,8 @@ class DoomDecider:
     def decide(self, scene: Scene) -> DoomDecision:
         fs = facts(scene)
         qs = questions(fs)
+        if self.supported:
+            qs = {a: q for a, q in qs.items() if a in self.supported}
         text = state_text(scene)
         laya_q = {f"q_{a}": {"type": "noul", "instructions": q, "criteria": dict(CRITERIA)} for a, q in qs.items()}
         t0 = time.perf_counter()

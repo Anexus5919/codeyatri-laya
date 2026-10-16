@@ -8,11 +8,23 @@ fields and hash rule, with Doom's action names as the probability keys). This mo
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
-ACTIONS = ("shoot", "turn_left", "turn_right", "turn_left_big", "turn_right_big",
+ACTIONS = ("shoot", "turn_left", "turn_right", "turn_left_big", "turn_right_big", "turn_around",
            "forward", "backward", "strafe_left", "strafe_right", "use")
+
+
+def log_keys(spec: Path) -> tuple[str, ...]:
+    """The action names a Doom log was written with (logs before the turn-around action have ten)."""
+    try:
+        with open(spec, encoding="utf-8") as fh:
+            first = json.loads(fh.readline())
+        keys = tuple((first.get("decision") or {}).get("probabilities") or ())
+    except (OSError, ValueError):
+        return ACTIONS
+    return keys if keys and set(keys) <= set(ACTIONS) else ACTIONS
 
 
 def frame_bytes(folder: Path, sid: str, step: str) -> bytes | None:

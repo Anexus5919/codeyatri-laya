@@ -38,7 +38,7 @@ from urllib.parse import parse_qs, urlparse
 
 from ..arena.spec_log import verify_log
 from .doom_web import ACTIONS as DOOM_ACTIONS
-from .doom_web import frame_bytes, has_frames, recording_checks
+from .doom_web import frame_bytes, has_frames, log_keys, recording_checks
 
 STATIC = Path(__file__).with_name("arena_static")
 APP_DIST = Path(__file__).with_name("app_dist")
@@ -764,7 +764,7 @@ class RunStore:
         final = final if isinstance(final, dict) else None
         # A Doom final record is the episode result, not an arena response, so the chain is checked on its own
         # and the recording checks below compare the log with the final record
-        kw = {"keys": DOOM_ACTIONS} if doom else {}
+        kw = {"keys": log_keys(s.spec)} if doom else {}
         against = None if doom else final
         if cut == len(data):
             result = verify_log(s.spec, against, **kw)

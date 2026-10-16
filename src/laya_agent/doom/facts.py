@@ -45,7 +45,9 @@ MONSTERS = {"ZombieMan": "Zombieman", "Zombieman": "Zombieman", "ShotgunGuy": "s
 ITEM_CATEGORIES = ("Health", "Armor", "Ammo", "Weapon", "Key", "Powerup")
 MISSILE_IGNORE = ("BulletPuff",)
 SIDE_ANGLE = {"forward": 0.0, "backward": 180.0, "strafe_left": 90.0, "strafe_right": -90.0}
-TURNS = {"turn_left": TURN_SMALL, "turn_right": -TURN_SMALL, "turn_left_big": TURN_BIG, "turn_right_big": -TURN_BIG}
+TURNS = {"turn_left": TURN_SMALL, "turn_right": -TURN_SMALL, "turn_left_big": TURN_BIG, "turn_right_big": -TURN_BIG,
+         "turn_around": 180.0}
+SCAN = tuple(range(-150, 181, 30))  # straight lines every 30 degrees around the player, for unexplored ground
 
 
 def pretty(name: str) -> str:
@@ -112,6 +114,8 @@ class Scene:
     last: str | None = None  # the action played just before this decision
     door_state: str = ""     # for the door straight ahead: "" | opening | stuck
     stalled: set = field(default_factory=set)  # moves tried just now that did not move the player
+    frontier: float | None = None  # the direction (degrees, + is left) whose straight line holds the most new ground
+    frontier_new: int = 0
 
     @property
     def target(self) -> Enemy | None:
@@ -220,10 +224,18 @@ class Perceiver:
 
         rays, new = {}, {}
         for act, off in list(SIDE_ANGLE.items()) + [("turn_left_big", TURN_BIG), ("turn_right_big", -TURN_BIG),
-                                                    ("turn_left", TURN_SMALL), ("turn_right", -TURN_SMALL)]:
+                                                    ("turn_left", TURN_SMALL), ("turn_right", -TURN_SMALL),
+                                                    ("turn_around", 180.0)]:
             hit = geo.cast(x, y, ang + off, z=z)
             rays[act] = hit
             new[act] = self.explored.new_cells_along(x, y, ang + off, hit.dist)
+        # Where the most unexplored ground lies along one straight line, looking all around (no path search)
+        frontier, frontier_new = None, 0
+        for off in SCAN:
+            hit = geo.cast(x, y, ang + off, z=z)
+            n = self.explored.new_cells_along(x, y, ang + off, hit.dist)
+            if n > frontier_new or (n == frontier_new and n and abs(off) < abs(frontier)):
+                frontier, frontier_new = float(off), n
 
         # Door memory: a door is "opening" for a while after use, and "stuck" if it is still shut after that
         fwd = rays["forward"]
@@ -250,11 +262,11 @@ class Perceiver:
 
         return Scene(x, y, ang, int(v["HEALTH"]), int(v["ARMOR"]), int(v["SELECTED_WEAPON"]),
                      int(v["SELECTED_WEAPON_AMMO"]), int(v["KILLCOUNT"]), enemies, items, missiles, rays, new,
-                     lost, still, self.last_action, door_state, set(self.stalled))
+                     lost, still, self.last_action, door_state, set(self.stalled), frontier, frontier_new)
 
 
 OPPOSITE = {"turn_left": "turn_right", "turn_right": "turn_left", "turn_left_big": "turn_right_big",
-            "turn_right_big": "turn_left_big", "forward": "backward", "backward": "forward",
+            "turn_right_big": "turn_left_big", "turn_around": "turn_around", "forward": "backward", "backward": "forward",
             "strafe_left": "strafe_right", "strafe_right": "strafe_left"}
 
 
@@ -274,6 +286,8 @@ def state_text(s: Scene) -> str:
         parts.append(f"You just lost {s.lost_health} health.")
     if s.still:
         parts.append(f"You have barely moved during the last {STILL_WINDOW} actions.")
+    if s.frontier is not None and abs(s.frontier) > 30.0 and not seen:
+        parts.append(f"Most unexplored ground: {where(s.frontier)}.")
     return " ".join(parts)
 
 
@@ -310,15 +324,26 @@ def _shoot(s: Scene) -> ActFact:
                             f"{s.ammo} rounds left.", data={"hits": False})
 
 
+def _toward_frontier(s: Scene, act: str) -> bool:
+    """Whether this turn swings toward the most unexplored ground the all-round scan found."""
+    f = s.frontier
+    if f is None or abs(f) <= 30.0:
+        return False
+    return act in ("turn_left_big", "turn_right_big") and (f > 0) == (TURNS[act] > 0) and abs(f) < 135.0
+
+
 def _turn(s: Scene, act: str) -> ActFact:
     deg = TURNS[act]
     side, size = ("left" if deg > 0 else "right"), abs(round(deg))
-    head = f"turns {side} {size} degrees"
+    head = "turns around" if abs(deg) >= 180 else f"turns {side} {size} degrees"
     e = s.target
     if e is None:
         if s.last == OPPOSITE.get(act):
             return ActFact(act, f"{head}, straight back to where you faced a moment ago, to face {_faces(s, act)}.",
                            data={"aim": None, "undo": True})
+        if _toward_frontier(s, act):
+            return ActFact(act, f"{head} to face {_faces(s, act)}, toward the most unexplored ground "
+                                f"({where(s.frontier)}).", data={"aim": None, "frontier": True})
         return ActFact(act, f"{head} to face {_faces(s, act)}.", data={"aim": None})
     new = (e.bearing - deg + 540.0) % 360.0 - 180.0
     what = f"the {e.name}" + ("" if e.visible else " out of view")
@@ -438,10 +463,14 @@ def reader_scores(s: Scene, fs: dict[str, ActFact]) -> dict[str, float]:
             if not d.get("blocked"):
                 sc[act] = max(sc[act], new_base + min(d["new"], 9) * (1.0 if act != "backward" else 0.5)
                               if d["new"] else old_base)
+        # Turning around is for facing an enemy behind; exploring sweeps 30 degrees at a time, because walking back
+        # the way you came (turn around, forward, turn around) goes nowhere
         for act in ("turn_left_big", "turn_right_big"):
             hit, n = s.rays[act], s.new_cells.get(act, 0)
             if hit.dist >= BLOCKED * 2 and n:
                 sc[act] = max(sc[act], 35.0 + min(n, 9) + (30.0 if s.still else 0.0))
+            elif fs[act].data.get("frontier"):  # nothing new within 30 degrees: swing toward the new ground
+                sc[act] = max(sc[act], 33.0)
             else:  # nothing new in reach: look around, preferring the longest open line
                 sc[act] = max(sc[act], 5.0 + min(hit.dist, 1000.0) / 200.0)
         if s.still and not fs["forward"].data.get("blocked"):
@@ -454,8 +483,8 @@ def reader_scores(s: Scene, fs: dict[str, ActFact]) -> dict[str, float]:
     return sc
 
 
-TIE_ORDER = ("forward", "turn_left_big", "turn_right_big", "turn_left", "turn_right", "strafe_left", "strafe_right",
-             "use", "backward", "shoot")  # on a tie, never fire blind
+TIE_ORDER = ("forward", "turn_left_big", "turn_right_big", "turn_left", "turn_right", "turn_around", "strafe_left",
+             "strafe_right", "use", "backward", "shoot")  # on a tie, never fire blind
 
 
 def reader_choice(sc: dict[str, float]) -> str:

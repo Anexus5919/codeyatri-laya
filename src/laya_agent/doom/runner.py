@@ -132,7 +132,7 @@ def play_episode(env: DoomEnv, decider: DoomDecider, runs_dir: str | Path, agent
             decide_ms = (time.perf_counter() - t0) * 1000
             event({"type": "decision", "step": step + 1, "tic": obs.tic, "state_text": dec.state_text,
                    "facts": {a: f.text for a, f in dec.facts.items()},
-                   "offered": [a for a, f in dec.facts.items() if f.offered],
+                   "offered": list(dec.questions),
                    "p_true": {a: round(p, 6) for a, p in dec.p_true.items()},
                    "probabilities": dec.probabilities, "chosen": dec.action, "source": dec.source,
                    "laya_ms": round(dec.laya_ms, 1), "decide_ms": round(decide_ms)})

@@ -5,10 +5,10 @@ export const DIRS: readonly Dir[] = ["up", "down", "left", "right"] as const;
 
 // Doom: one yes/no question per offered action instead of per direction
 export type DoomAction =
-  | "shoot" | "turn_left" | "turn_right" | "turn_left_big" | "turn_right_big"
+  | "shoot" | "turn_left" | "turn_right" | "turn_left_big" | "turn_right_big" | "turn_around"
   | "forward" | "backward" | "strafe_left" | "strafe_right" | "use";
 export const DOOM_ACTIONS: readonly DoomAction[] = [
-  "shoot", "turn_left", "turn_right", "turn_left_big", "turn_right_big",
+  "shoot", "turn_left", "turn_right", "turn_left_big", "turn_right_big", "turn_around",
   "forward", "backward", "strafe_left", "strafe_right", "use",
 ] as const;
 // Anything a logged decision can choose

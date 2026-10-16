@@ -51,7 +51,7 @@ def test_explored_counts_only_new_ground_along_the_line():
 
 def scene(**kw):
     rays = {a: Hit(600.0, "wall") for a in ("forward", "backward", "strafe_left", "strafe_right", "turn_left_big",
-                                            "turn_right_big", "turn_left", "turn_right")}
+                                            "turn_right_big", "turn_left", "turn_right", "turn_around")}
     base = dict(x=0.0, y=0.0, angle=0.0, health=100, armor=0, weapon=2, ammo=20, kills=0, rays=rays,
                 new_cells={a: 0 for a in rays})
     base.update(kw)
@@ -82,7 +82,7 @@ def test_turn_facts_say_where_the_enemy_ends_up():
 
 def test_a_blocked_move_and_a_door_in_reach():
     rays = {a: Hit(600.0, "wall") for a in ("backward", "strafe_left", "strafe_right", "turn_left_big",
-                                            "turn_right_big", "turn_left", "turn_right")}
+                                            "turn_right_big", "turn_left", "turn_right", "turn_around")}
     rays["forward"] = Hit(30.0, "door")
     s = scene(rays=rays)
     fs = facts(s)
@@ -107,10 +107,48 @@ def test_strafing_away_from_a_fireball_is_preferred():
 
 def test_undoing_the_last_move_is_stated_and_ranked_low():
     s = scene(last="forward", new_cells={"backward": 3, "forward": 0, "strafe_left": 0, "strafe_right": 0,
-                                         "turn_left_big": 0, "turn_right_big": 0, "turn_left": 0, "turn_right": 0})
+                                         "turn_left_big": 0, "turn_right_big": 0, "turn_left": 0, "turn_right": 0,
+                                         "turn_around": 0})
     fs = facts(s)
     assert "back where you just came from" in fs["backward"].text
     assert reader_scores(s, fs)["backward"] <= 3.0
+
+
+def test_an_enemy_behind_is_faced_with_one_turn_around():
+    s = scene(enemies=[Enemy(1, "Imp", 120.0, -160.0, False, False)])
+    fs = facts(s)
+    assert fs["turn_around"].text.startswith("turns around: the Imp out of view comes closer to the crosshair")
+    assert reader_choice(reader_scores(s, fs)) == "turn_around"
+
+
+def test_turning_toward_unexplored_ground_found_by_the_all_round_scan():
+    s = scene(frontier=90.0, frontier_new=4)
+    fs = facts(s)
+    assert "toward the most unexplored ground (90 degrees left)" in fs["turn_left_big"].text
+    assert "Most unexplored ground: 90 degrees left." in state_text(s)
+    assert reader_choice(reader_scores(s, fs)) == "turn_left_big"
+
+
+def test_a_checkpoint_is_only_asked_about_actions_it_was_trained_on(tmp_path):
+    from laya_agent.doom.decider import DoomDecider
+
+    ckpt = tmp_path / "ckpt"
+    ckpt.mkdir()
+    (ckpt / "questions.json").write_text(json.dumps({f"q_{a}": {} for a in ACTIONS if a != "turn_around"}))
+
+    class R:
+        def register(self, name, path, description=""):
+            return name
+
+        def predict(self, state, qs, model=None):
+            self.asked = sorted(qs)
+            return {"answers": {k: {"noul": 0.5} for k in qs}}
+
+    r = R()
+    d = DoomDecider(router=r, model=str(ckpt))
+    dec = d.decide(scene())
+    assert "q_turn_around" not in r.asked and dec.probabilities["turn_around"] == 0.0
+    assert set(dec.probabilities) == set(ACTIONS)
 
 
 def test_health_pickup_when_hurt():
