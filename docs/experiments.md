@@ -165,3 +165,9 @@ Chance (uniform over legal moves): 0.526.
 - Interpretation: training the encoder, not just the decision head, is what lets Laya read the fact text the way the priorities intend. The fine-tuned Laya matches the perfect reader it was trained on (75% at 512) and slightly exceeds it on these seeds, likely because its soft preferences break ties better than the reader's fixed order.
 - Decision: this checkpoint plays the real 2048 runs unless a later one (round 1 full data, round 2) beats it on the same seeds.
 - Evidence: `docs/evidence/probe_2048_kaggle_bounded.json`, `docs/evidence/eval_2048_kaggle_bounded_seeds100.json`, `docs/evidence/eval_2048_kaggle_bounded_seeds300.json`.
+
+## E10: Round 2 on the decision head only (laptop)
+
+- 2026-10-16. Continued the E8 head-only checkpoint for 1 epoch on `data/ft2048_r2` (128,024 questions, 16,688 positions from boards the fine-tuned Laya itself reached, labelled by the same priority reader).
+- Held-out agreement 0.830 to 0.835, ECE 0.0145 to 0.0166: a marginal change. Not played in full games.
+- Interpretation: with the encoder frozen, the head has reached its ceiling; E9 shows the encoder is where the gain is. Round 2 continues as a full-model run on Kaggle (`codeyatri-laya-2048-finetune-r2`).
