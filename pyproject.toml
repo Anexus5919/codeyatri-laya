@@ -16,6 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+doom = ["vizdoom>=1.2.4", "pillow>=10"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
