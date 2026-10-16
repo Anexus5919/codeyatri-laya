@@ -65,6 +65,7 @@ class LayaMoveDecider:
         self.router = router
         self.game = game
         self.spec = GAMES[game]
+        self.model_source = model  # what was asked for: a built-in name or a checkpoint path
         if model not in ("english", "multilingual", "typed-decisions") and hasattr(router, "register"):
             # A local or Hub checkpoint path, for example a fine-tuned Laya
             model = router.register("custom", model, description="configured checkpoint")

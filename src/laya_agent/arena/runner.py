@@ -56,7 +56,8 @@ def play_session(client: Any, decider: LayaMoveDecider, game: str, runs_dir: Pat
     events = EventLog(folder / f"{sid}.events.jsonl")
     events.write({"type": "session_start", "session_id": sid, "game": game, "agent_name": agent_name,
                   "env": getattr(client, "env", "HOSTED"), "design": decider.template, "offer": decider.offer,
-                  "model": decider.model, "device": (load_info or {}).get("device"), "load": load_info,
+                  "model": decider.model, "model_source": getattr(decider, "model_source", decider.model),
+                  "device": (load_info or {}).get("device"), "load": load_info,
                   "first_response": resp, "ts": utc_ts()})
     points = GAMES[game]["points"]
 
