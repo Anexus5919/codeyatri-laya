@@ -68,7 +68,8 @@ pip install -e ".[dev]"
 # GPU: install the CUDA build of torch from pytorch.org into the same environment
 
 # live decision viewer (keep it visible while the bot plays)
-python -m laya_agent.viewer.arena_web runs --port 8770     # http://127.0.0.1:8770
+python -m laya_agent.viewer.arena_web runs --port 8770 --sim-roots "runs_sim*"   # http://127.0.0.1:8770
+# header: Snake | 2048 switcher, Arena (real) vs Simulator (test); Board view shows the public leaderboard
 
 # one real session on the arena, agent name CodeYatri
 python -m laya_agent.arena.runner --game snake

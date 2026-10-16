@@ -14,8 +14,8 @@ Every real session is a permanent public record: never delete a log, never start
 
 ```
 # terminal 1: the live viewer (must stay visible during judging)
-.venv\Scripts\python -m laya_agent.viewer.arena_web runs --port 8770
-# open http://127.0.0.1:8770
+.venv\Scripts\python -m laya_agent.viewer.arena_web runs --port 8770 --sim-roots "runs_sim*"
+# open http://127.0.0.1:8770 (Arena (real) is the default; Simulator (test) shows local test runs)
 
 # terminal 2: one session
 .venv\Scripts\python -m laya_agent.arena.runner --game snake
