@@ -178,3 +178,17 @@ Chance (uniform over legal moves): 0.526.
 - The simulator is faithful: all 294 real transitions are one slide plus one new tile, with 4s spawned 10.2% of the time (simulator: 10%).
 - The largest tile stayed in the bottom-left corner for 169 moves. At step 169 only up (loses the corner) and right (keeps it, board less ordered) were legal; Laya scored them 0.093 and 0.092 and took up. At step 170 down would have moved the 256 back into the corner (P(yes) 0.820) but Laya preferred left (0.941: more order, more empty cells, two merges). The corner never came back.
 - Interpretation: two gaps. (1) Near-ties between two bad options are decided by noise. (2) Corner recovery is rare in the training data because the teacher's own games almost never lose the corner. Round 2 (boards our fine-tuned Laya reached, including lost corners) targets (2); a close-call follow-up question to Laya would target (1).
+
+## E12: Full-data checkpoint vs the bounded one (simulator, same 24 seeds)
+
+- 2026-10-16. Kaggle `codeyatri-laya-2048-finetune-full`: all 20,311 rows, 4 epochs, full model. Held-out agreement **0.955** (bounded checkpoint 0.926). Frozen copy: `data/ft2048/ckpt_kaggle_full_frozen`.
+- On the two real-game positions that lost E11: step 169 now picks right (keeps the corner), P(yes) 0.620 vs 0.053 (bounded: 0.092 vs 0.093, wrong). Step 170 (moving the lost 256 back into the corner) is still wrong, 0.940 vs 0.957.
+
+| checkpoint | seeds 100 to 107 at 512+ | seeds 300 to 315 at 512+ | total at 512+ | 1024+ | 2048 | mean points |
+|---|---|---|---|---|---|---|
+| bounded (12k rows, 2 epochs) | 4 of 8 | 15 of 16 | 19 of 24 | 14 | 1 | 506 |
+| full (all rows, 4 epochs) | 8 of 8 | 11 of 16 | 19 of 24 | 11 | 3 | 494 |
+
+- Interpretation: tied on the 512 gate; 24 games cannot separate them. The full checkpoint has the higher ceiling (three 2048 tiles, about 720 points each), which is what the scoring rule rewards (median of the best three verified runs; failed runs do not count against it), and it fixes the decision that lost the first real game.
+- Decision: the full checkpoint plays the next real 2048 runs.
+- Evidence: `docs/evidence/eval_2048_kaggle_full_seeds100.json`, `docs/evidence/eval_2048_kaggle_full_seeds300.json`.

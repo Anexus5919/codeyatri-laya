@@ -1,0 +1,126 @@
+{
+ "summary": {
+  "game": "2048",
+  "template": "noul_nodir",
+  "games": 8,
+  "points_mean": 510.9,
+  "points_median": 509.5,
+  "points_min": 434,
+  "points_max": 588,
+  "fallback_share_max": 0.0,
+  "all_logs_verify": true,
+  "best_tiles": {
+   "512": 4,
+   "1024": 4
+  },
+  "reach_512_rate": 1.0
+ },
+ "rows": [
+  {
+   "seed": 100,
+   "points": 436,
+   "won": false,
+   "steps": 504,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 59.6,
+   "best_tile": 512,
+   "score": 7304
+  },
+  {
+   "seed": 101,
+   "points": 587,
+   "won": false,
+   "steps": 952,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 108.1,
+   "best_tile": 1024,
+   "score": 15732
+  },
+  {
+   "seed": 102,
+   "points": 587,
+   "won": false,
+   "steps": 940,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 97.8,
+   "best_tile": 1024,
+   "score": 15792
+  },
+  {
+   "seed": 103,
+   "points": 588,
+   "won": false,
+   "steps": 960,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 106.0,
+   "best_tile": 1024,
+   "score": 16324
+  },
+  {
+   "seed": 104,
+   "points": 436,
+   "won": false,
+   "steps": 494,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 50.1,
+   "best_tile": 512,
+   "score": 7116
+  },
+  {
+   "seed": 105,
+   "points": 436,
+   "won": false,
+   "steps": 536,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 53.7,
+   "best_tile": 512,
+   "score": 7560
+  },
+  {
+   "seed": 106,
+   "points": 583,
+   "won": false,
+   "steps": 698,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 75.7,
+   "best_tile": 1024,
+   "score": 11644
+  },
+  {
+   "seed": 107,
+   "points": 434,
+   "won": false,
+   "steps": 415,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 45.7,
+   "best_tile": 512,
+   "score": 5788
+  }
+ ],
+ "load": {
+  "laya_version": "0.4.6",
+  "model": "custom",
+  "device": "cuda",
+  "load_s": 11.77,
+  "revision": null,
+  "template": "noul_nodir",
+  "offer": "legal",
+  "style": "v3"
+ }
+}
