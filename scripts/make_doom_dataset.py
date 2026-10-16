@@ -7,6 +7,8 @@ played by that reader with some random actions mixed in, across Freedoom maps an
 Train and held-out splits never share a game.
 
 Usage: python scripts/make_doom_dataset.py --out data/ftdoom --workers 4
+Round 2 (states that a fine-tuned Laya reaches, still labelled by the reader, one process on the GPU):
+       python scripts/make_doom_dataset.py --out data/ftdoom_r2laya --laya data/ftdoom/ckpt_quick_frozen
 """
 
 from __future__ import annotations
@@ -40,8 +42,12 @@ def episodes(seed0: int) -> list[dict]:
     return eps
 
 
+_DECIDER = None
+
+
 def play(ep: dict) -> dict:
     rng = random.Random(ep["seed"])
+    decider = _DECIDER if ep.get("laya") else None
     env = DoomEnv(ep["scenario"], skill=ep["skill"], seed=ep["seed"], timeout_tics=int(ep["minutes"] * 60 * 35))
     rows, best_counts = [], Counter()
     try:
@@ -65,9 +71,11 @@ def play(ep: dict) -> dict:
                              "expected": {f"q_{a}": bool(sc[a] == top) for a in qs},
                              "meta": {"scenario": ep["scenario"], "best": best, "seed": ep["seed"]}})
                 best_counts[best[0]] += 1
-            if burst > 0 or rng.random() < 0.15:
+            if burst > 0 or rng.random() < (0.05 if decider else 0.15):
                 burst = burst - 1 if burst > 0 else rng.randint(0, 3)
                 a = rng.choice(sorted(sc))  # random actions widen the states the reader alone would reach
+            elif decider is not None:
+                a = decider.decide(s).action  # round 2: go where the fine-tuned Laya itself goes
             else:
                 a = reader_choice(sc)
             env.act(a)
@@ -87,14 +95,27 @@ def main() -> None:
     ap.add_argument("--shoot-keep", type=float, default=0.6, help="extra thinning of rows whose answer is shoot")
     ap.add_argument("--forward-keep", type=float, default=0.5, help="extra thinning of rows whose answer is forward")
     ap.add_argument("--seed", type=int, default=1993)
+    ap.add_argument("--laya", default=None, help="a checkpoint: Laya plays the games (one process), the reader labels")
     args = ap.parse_args()
 
     rng = random.Random(args.seed)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     eps = episodes(args.seed)
-    with Pool(args.workers) as pool:
-        results = pool.map(play, eps, chunksize=1)
+    if args.laya:
+        global _DECIDER
+        from laya_agent.doom.decider import DoomDecider
+
+        _DECIDER = DoomDecider(model=args.laya)
+        print("laya:", _DECIDER.load(), flush=True)
+        eps = [{**e, "laya": True, "minutes": 2.5} for e in eps[::2]]
+        results = []
+        for e in eps:
+            results.append(play(e))
+            print(f"  played {e['scenario']}: {len(results[-1]['rows'])} rows", flush=True)
+    else:
+        with Pool(args.workers) as pool:
+            results = pool.map(play, eps, chunksize=1)
 
     train, hold, seen = [], [], set()
     best_kept = Counter()
