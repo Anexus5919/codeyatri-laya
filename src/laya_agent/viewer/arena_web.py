@@ -6,6 +6,9 @@ Reads the files the arena runner writes under runs/<game>/:
   <session_id>.final.json    the game's final API response (optional)
 
 Usage: python -m laya_agent.viewer.arena_web [runs_folder] [--port 8770] [--host 127.0.0.1]
+
+Pages: / is the built dashboard in app_dist/ (frontend/ in the repo builds it), /classic is the
+original single-file viewer. Without app_dist/ the classic viewer is served at / as well.
 """
 
 from __future__ import annotations
@@ -14,9 +17,11 @@ import argparse
 import json
 import math
 import os
+import re
 import tempfile
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -26,17 +31,44 @@ from urllib.parse import parse_qs, urlparse
 from ..arena.spec_log import verify_log
 
 STATIC = Path(__file__).with_name("arena_static")
+APP_DIST = Path(__file__).with_name("app_dist")
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/style.css": ("style.css", "text/css; charset=utf-8"),
     "/app.js": ("app.js", "application/javascript; charset=utf-8"),
+    "/classic": ("index.html", "text/html; charset=utf-8"),
+    "/classic/": ("index.html", "text/html; charset=utf-8"),
+    "/classic/index.html": ("index.html", "text/html; charset=utf-8"),
+    "/classic/style.css": ("style.css", "text/css; charset=utf-8"),
+    "/classic/app.js": ("app.js", "application/javascript; charset=utf-8"),
 }
+APP_PAGES = ("/", "/index.html")
+ASSET_TYPES = {
+    ".js": "application/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".woff2": "font/woff2",
+    ".woff": "font/woff",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".ico": "image/x-icon",
+    ".json": "application/json",
+    ".txt": "text/plain; charset=utf-8",
+}
+SAFE_ASSET = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 GAMES = ("snake", "2048")
 EVENTS_SUFFIX = ".events.jsonl"
 FINAL_SUFFIX = ".final.json"
 SPEC_SUFFIX = ".jsonl"
 TIMING_KEYS = ("decide_ms", "api_ms", "turn_ms")
+DIRECTIONS = ("up", "down", "left", "right")
+
+# A session is LIVE only while its files keep growing and no session_end or final response exists
+LIVE_WINDOW_S = 15.0
+INTERRUPTED_AFTER_S = 120.0
+SIM_ENVS = ("LOCAL_SIM", "LOCAL_FIXTURE")
+SIM_AGENTS = ("SIM-EVAL",)
+HISTORY_PAGE = 400
 
 SNAKE_POINTS_PER_FOOD = 60
 SNAKE_WIN_BONUS = 100
@@ -69,6 +101,102 @@ def percentile(values: list[float], q: float) -> float | None:
         return None
     ordered = sorted(values)
     return ordered[max(0, math.ceil(q * len(ordered)) - 1)]
+
+
+def session_status(done: bool, age_s: float) -> str:
+    if done:
+        return "finished"
+    if age_s <= LIVE_WINDOW_S:
+        return "live"
+    return "idle" if age_s <= INTERRUPTED_AFTER_S else "interrupted"
+
+
+def env_kind(start: dict | None) -> str:
+    # The env label the runner wrote decides it; an agent name alone never makes a session hosted
+    start = start or {}
+    env = str(start.get("env") or "").upper()
+    agent = str(start.get("agent_name") or "").upper()
+    if env in SIM_ENVS or agent in SIM_AGENTS or agent.startswith("TEST"):
+        return "simulator"
+    if env == "HOSTED":
+        return "hosted"
+    return "unknown"
+
+
+def pair_decisions(lines: list[dict], events: list[dict]) -> tuple[list[dict | None], dict | None]:
+    """Matches each submission line to the decision event the runner wrote just before sending it.
+
+    A rejected move and its retry share a step, so the k-th usable decision of a step belongs to the
+    k-th line of that step. A decision followed by reconcile "not_applied" never became a line.
+    Returns one event (or None) per line, and the newest decision that has no line yet.
+    """
+    decisions: list[list] = []
+    for e in events:
+        kind = e.get("type")
+        if kind == "decision":
+            decisions.append([e, True])
+        elif (kind == "reconcile" and e.get("verdict") == "not_applied" and decisions
+              and decisions[-1][0].get("step") == e.get("step")):
+            decisions[-1][1] = False
+    queues: dict[Any, deque] = {}
+    for idx, (e, usable) in enumerate(decisions):
+        if usable:
+            queues.setdefault(e.get("step"), deque()).append(idx)
+    used: set[int] = set()
+    paired: list[dict | None] = []
+    for line in lines:
+        q = queues.get(line.get("step"))
+        idx = q.popleft() if q else None
+        ev = decisions[idx][0] if idx is not None else None
+        if idx is not None:
+            used.add(idx)
+        paired.append(ev if ev is not None and ev.get("chosen") == line.get("action") else None)
+    usable = [i for i, (_, ok) in enumerate(decisions) if ok]
+    pending = decisions[usable[-1]][0] if usable and usable[-1] not in used else None
+    return paired, pending
+
+
+def compact_event(ev: dict | None) -> dict | None:
+    if not isinstance(ev, dict):
+        return None
+    keys = ("step", "facts", "kinds", "p_true", "probabilities", "chosen", "source", "laya_choice", "reason",
+            "decide_ms", "laya_ms", "ts")
+    return {k: ev.get(k) for k in keys}
+
+
+def questions_by_direction(line: dict, ev: dict | None) -> dict[str, str] | None:
+    # The decider lists one question per asked direction in up, down, left, right order,
+    # and p_true holds exactly the asked directions, so the two zip together
+    questions = (line.get("decision") or {}).get("questions")
+    p_true = (ev or {}).get("p_true")
+    if not isinstance(questions, list) or not isinstance(p_true, dict):
+        return None
+    asked = [d for d in DIRECTIONS if d in p_true]
+    if len(asked) != len(questions):
+        return None
+    return dict(zip(asked, questions))
+
+
+def step_record(i: int, line: dict, ev: dict | None, error: Any = None) -> dict:
+    dec = line.get("decision") if isinstance(line.get("decision"), dict) else {}
+    questions = dec.get("questions")
+    return {
+        "i": i,
+        "step": line.get("step"),
+        "result": line.get("result"),
+        "action": line.get("action"),
+        "source": dec.get("source"),
+        "confidence": dec.get("confidence"),
+        "probabilities": dec.get("probabilities"),
+        "n_questions": len(questions) if isinstance(questions, list) else 0,
+        "timing": line.get("timing"),
+        "ts": line.get("ts"),
+        "hash": str(line.get("hash") or "")[:16],
+        "state_before": line.get("state_before"),
+        "state_after": line.get("state_after"),
+        "event": compact_event(ev),
+        "error": error,
+    }
 
 
 def timing_stats(lines: list[dict]) -> dict:
@@ -161,6 +289,7 @@ class RunStore:
         self._lock = threading.Lock()
         self._tails: dict[Path, JsonlTail] = {}
         self._finals: dict[Path, tuple[tuple[float, int], Any]] = {}
+        self._records: dict[Path, tuple[tuple, list[dict], dict | None]] = {}
 
     def _folders(self) -> list[Path]:
         if not self.root.is_dir():
@@ -212,6 +341,10 @@ class RunStore:
         with self._lock:
             self._finals[path] = (key, data)
         return data
+
+    def _bad_lines(self, s: Session) -> int:
+        with self._lock:
+            return sum(t.bad_lines for p, t in self._tails.items() if p in (s.spec, s.events))
 
     def _read(self, s: Session) -> tuple[list[dict], list[dict], Any]:
         lines = self._tail(s.spec)
@@ -267,6 +400,10 @@ class RunStore:
         out["points"] = reported if has_reported else computed
         out["points_source"] = "session_end" if has_reported else "computed"
         out["agent_name"] = (start or {}).get("agent_name")
+        start = start or {}
+        out.update(env=start.get("env"), env_kind=env_kind(start), model=start.get("model"),
+                   model_source=start.get("model_source"), device=start.get("device"), design=start.get("design"),
+                   started_ts=start.get("ts"), ended_ts=(end or {}).get("ts"))
         return out
 
     def sessions(self) -> list[dict]:
@@ -280,10 +417,93 @@ class RunStore:
             if score is None:
                 score = summ.get("score", summ.get("foods"))
             mtime = s.mtime()
-            out.append({"game": s.game, "session_id": s.session_id, "mtime": mtime, "age_s": round(now - mtime, 1),
+            age = round(now - mtime, 1)
+            out.append({"game": s.game, "session_id": s.session_id, "mtime": mtime, "age_s": age,
                         "steps": summ["steps"], "last_score": score, "points": summ["points"],
-                        "done": summ["done"], "won": summ["won"], "agent_name": summ["agent_name"]})
+                        "done": summ["done"], "won": summ["won"], "agent_name": summ["agent_name"],
+                        "status": session_status(summ["done"], age), "env": summ["env"],
+                        "env_kind": summ["env_kind"], "model": summ["model"], "model_source": summ["model_source"],
+                        "device": summ["device"], "design": summ["design"], "lines": summ["lines"],
+                        "rejected": summ["rejected"], "fallbacks": summ["fallbacks"],
+                        "fallback_share": summ["fallback_share"], "decisions": summ["decisions"],
+                        "final_score": summ["final_score"], "points_source": summ["points_source"],
+                        "started_ts": summ["started_ts"], "folder": s.folder.name})
         return out
+
+    def _paired(self, s: Session, lines: list[dict], events: list[dict]) -> tuple[list[dict], dict | None]:
+        key = (len(lines), len(events), lines[-1].get("hash") if lines else None,
+               lines[0].get("hash") if lines else None, events[-1].get("ts") if events else None)
+        with self._lock:
+            cached = self._records.get(s.spec)
+            if cached and cached[0] == key:
+                return cached[1], cached[2]
+        paired, pending = pair_decisions(lines, events)
+        errors: dict[Any, deque] = {}
+        for e in events:
+            if e.get("type") == "rejected":
+                errors.setdefault((e.get("step"), e.get("action")), deque()).append(e.get("error"))
+        records = []
+        for i, (line, ev) in enumerate(zip(lines, paired)):
+            err = None
+            if line.get("result") == "rejected":
+                q = errors.get((line.get("step"), line.get("action")))
+                err = q.popleft() if q else None
+            records.append(step_record(i, line, ev, err))
+        with self._lock:
+            self._records[s.spec] = (key, records, pending)
+        return records, pending
+
+    def history(self, sid: str, after: int = 0, limit: int = HISTORY_PAGE) -> dict | None:
+        """Compact per-line records (line + its decision event), paged forward from `after`."""
+        s = self.scan().get(sid)
+        if s is None:
+            return None
+        lines, events, final = self._read(s)
+        records, pending = self._paired(s, lines, events)
+        reset = after > len(records) or after < 0
+        if reset:
+            after = 0
+        page = records[after: after + max(1, limit)]
+        start = next((e for e in events if e.get("type") == "session_start"), None)
+        end = next((e for e in reversed(events) if e.get("type") == "session_end"), None)
+        summary = self.summarize(s, lines, events, final)
+        mtime = s.mtime()
+        age = round(time.time() - mtime, 1)
+        return {
+            "session_id": s.session_id,
+            "game": s.game,
+            "folder": str(s.folder),
+            "reset": reset,
+            "after": after,
+            "next_after": after + len(page),
+            "total": len(records),
+            "records": page,
+            "pending": pending,
+            "events_count": len(events),
+            "bad_lines": self._bad_lines(s),
+            "session_start": start,
+            "session_end": end,
+            "final": final,
+            "summary": summary,
+            "status": session_status(summary["done"], age),
+            "live_window_s": LIVE_WINDOW_S,
+            "interrupted_after_s": INTERRUPTED_AFTER_S,
+            "mtime": mtime,
+            "age_s": age,
+        }
+
+    def step(self, sid: str, i: int) -> dict | None:
+        """One full submission line with its decision event and the question asked per direction."""
+        s = self.scan().get(sid)
+        if s is None:
+            return None
+        lines, events, _ = self._read(s)
+        if not 0 <= i < len(lines):
+            return None
+        paired, _ = pair_decisions(lines, events)
+        line, ev = lines[i], paired[i]
+        return {"session_id": s.session_id, "i": i, "line": line, "event": ev,
+                "questions_by_dir": questions_by_direction(line, ev)}
 
     def session(self, sid: str, after: int = 0, eafter: int = 0, limit: int = MAX_LINES_PER_POLL) -> dict | None:
         s = self.scan().get(sid)
@@ -300,6 +520,8 @@ class RunStore:
         start = next((e for e in events if e.get("type") == "session_start"), None)
         end = next((e for e in reversed(events) if e.get("type") == "session_end"), None)
         mtime = s.mtime()
+        summary = self.summarize(s, lines, events, final)
+        age = round(time.time() - mtime, 1)
         return {
             "session_id": s.session_id,
             "game": s.game,
@@ -314,9 +536,10 @@ class RunStore:
             "session_start": start,
             "session_end": end,
             "final": final,
-            "summary": self.summarize(s, lines, events, final),
+            "summary": summary,
+            "status": session_status(summary["done"], age),
             "mtime": mtime,
-            "age_s": round(time.time() - mtime, 1),
+            "age_s": age,
         }
 
     def verify(self, sid: str) -> dict | None:
@@ -353,12 +576,12 @@ def make_handler(store: RunStore):
         def log_message(self, *args) -> None:  # keep the console for the bot
             pass
 
-        def _send(self, code: int, body: bytes, ctype: str) -> None:
+        def _send(self, code: int, body: bytes, ctype: str, cache: str = "no-store") -> None:
             try:
                 self.send_response(code)
                 self.send_header("Content-Type", ctype)
                 self.send_header("Content-Length", str(len(body)))
-                self.send_header("Cache-Control", "no-store")
+                self.send_header("Cache-Control", cache)
                 self.end_headers()
                 self.wfile.write(body)
             except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
@@ -366,6 +589,21 @@ def make_handler(store: RunStore):
 
         def _json(self, code: int, obj: Any) -> None:
             self._send(code, json.dumps(obj, default=str).encode("utf-8"), "application/json")
+
+        def _app_file(self, path: str) -> bool:
+            # Built dashboard files: /assets/<name> (content-hashed, cacheable) or a top-level file such as favicon.svg
+            parts = [p for p in path.split("/") if p]
+            if not parts or len(parts) > 2 or (len(parts) == 2 and parts[0] != "assets"):
+                return False
+            if not all(SAFE_ASSET.match(p) for p in parts):
+                return False
+            target = APP_DIST.joinpath(*parts)
+            ctype = ASSET_TYPES.get(target.suffix.lower())
+            if ctype is None or not target.is_file():
+                return False
+            cache = "public, max-age=31536000, immutable" if parts[0] == "assets" else "no-store"
+            self._send(200, target.read_bytes(), ctype, cache)
+            return True
 
         def do_GET(self) -> None:
             url = urlparse(self.path)
@@ -380,9 +618,27 @@ def make_handler(store: RunStore):
                 except ValueError:
                     return default
 
-            if url.path in STATIC_FILES:
+            if url.path in APP_PAGES and (APP_DIST / "index.html").is_file():
+                self._send(200, (APP_DIST / "index.html").read_bytes(), "text/html; charset=utf-8")
+            elif url.path in STATIC_FILES:
                 name, ctype = STATIC_FILES[url.path]
                 self._send(200, (STATIC / name).read_bytes(), ctype)
+            elif not url.path.startswith("/api/") and self._app_file(url.path):
+                pass
+            elif url.path == "/api/history":
+                sid = arg("id")
+                body = store.history(sid, int_arg("after", 0), int_arg("limit", HISTORY_PAGE)) if sid else None
+                if body is None:
+                    self._json(404, {"error": f"unknown session {sid!r}"})
+                else:
+                    self._json(200, body)
+            elif url.path == "/api/step":
+                sid = arg("id")
+                body = store.step(sid, int_arg("i", -1)) if sid else None
+                if body is None:
+                    self._json(404, {"error": f"unknown session or line {sid!r} {arg('i')!r}"})
+                else:
+                    self._json(200, body)
             elif url.path == "/api/sessions":
                 items = store.sessions()
                 self._json(200, {"root": str(store.root.resolve()), "sessions": items,
