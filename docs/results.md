@@ -11,9 +11,9 @@ Simulator games are never listed here; they live in `docs/experiments.md`.
 | 2026-10-16 15:50 | snake | c286e971-3fd1-4b3b-b310-e2b264db8338 | **1000** | 147 | yes | 0% | yes | Second real win. 15/15 foods, base `english`, all 147 moves decided by Laya. Server record matches the log (`python -m laya_agent.arena.verify c286e971`) |
 | 2026-10-16 16:30 | 2048 | f7ee009c-39d8-4697-ad6b-bb8b41453c01 | 289 (arena score 735) | 294 | no | 0% | yes | First real 2048 run, fine-tuned checkpoint `ckpt_kaggle_bounded_frozen`. Best tile 256. Lost the bottom-left corner at step 169 on a 0.093 vs 0.092 call and did not recover at step 170. Points by the guide formula; the arena's own score is 735 |
 | 2026-10-16 17:24 | snake | 5e8400b5-b56b-4dc7-8d5d-b12e8a146567 | **1000** | 130 | yes | 0% | yes | Third real win. 15/15 foods, base `english`, all 130 moves by Laya, server record matches |
-| 2026-10-16 17:36 | 2048 | df7287a4-1132-46f9-bc06-6b3db9a9a3fa | open (512 tile reached) | 318 | open | 0% | not yet (unfinished) | Checkpoint `ckpt_kaggle_full_frozen`. At step 319 the move request failed in transit (server still shows 318 steps) and the runner exited without waiting. Game still open on the arena; to be finished with `--resume` |
+| 2026-10-16 17:36 | 2048 | df7287a4-1132-46f9-bc06-6b3db9a9a3fa | **437** (arena score 883), best tile **512** | 586 | no | 0% | yes | Checkpoint `ckpt_kaggle_full_frozen`. At step 319 the move request failed in transit and the old runner exited; the game stayed open and was finished at 19:37 with `--resume` in the same log (chain continued, no gap). All 586 moves decided by Laya. Server record matches the log (`python -m laya_agent.arena.verify df7287a4`). Passes the 512 gate |
 
 ## Unlocks
 
 - 2048: open since the Snake gate was met (1000 >= 600, session 2ba7267e-def5-4fdc-aa53-0a249329eab9); the arena does not lock games and no confirmation is needed.
-- Doom-style: not yet requested.
+- Doom-style: gate met by the verified 512 tile in 2048 session df7287a4-1132-46f9-bc06-6b3db9a9a3fa.
