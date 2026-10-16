@@ -194,3 +194,124 @@ def test_built_app_is_served_and_classic_stays_available(server, tmp_path, monke
         with pytest.raises(urllib.error.HTTPError) as err:
             urllib.request.urlopen(f"{server}{bad}", timeout=5)
         assert err.value.code == 404
+
+
+def write_session(folder, sid, env, agent, steps=2):
+    log = SpecLog(folder / f"{sid}.jsonl", sid, "snake")
+    events = folder / f"{sid}.events.jsonl"
+    write_rows(events, [{"type": "session_start", "session_id": sid, "game": "snake", "agent_name": agent, "env": env,
+                         "ts": "2026-10-16T10:00:00Z"}])
+    body = [(2, 2), (1, 2), (0, 2)]
+    for step in range(1, steps + 1):
+        before = snake_state(body, (5, 5), 0, "right")
+        body = [(body[0][0] + 1, 2)] + body[:-1]
+        after = snake_state(body, (5, 5), 0, "right")
+        p = {"up": 0.3, "down": 0.3, "right": 0.6}
+        write_rows(events, [decision_event(step, p, "right", {"up": "move", "down": "move", "left": "reverse", "right": "move"})])
+        log.write(step=step, state_before=before, action="right", state_after=after, result="applied",
+                  decision=decision_block(p, p, "right"), timing={"decide_ms": 10, "api_ms": 0, "turn_ms": 10})
+    log.close()
+
+
+def test_sim_roots_get_unique_keys_and_a_source(tmp_path):
+    real = tmp_path / "runs" / "snake"
+    real.mkdir(parents=True)
+    write_session(real, "same-id", "HOSTED", "CodeYatri")
+    for name in ("runs_sim_a", "runs_sim_b"):
+        folder = tmp_path / name / "design" / "snake"
+        folder.mkdir(parents=True)
+        write_session(folder, "same-id", "LOCAL_SIM", "SIM-EVAL", steps=3)
+    roots = arena_web.resolve_sim_roots([str(tmp_path / "runs_sim*"), str(tmp_path / "runs")])
+    assert [r.name for r in roots] == ["runs_sim_a", "runs_sim_b", "runs"]
+    srv = make_server(tmp_path / "runs", "127.0.0.1", 0, roots)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}"
+    try:
+        body = get(f"{base}/api/sessions")
+        rows = {s["key"]: s for s in body["sessions"]}
+        # the main runs folder passed as a simulator root is ignored, so nothing is listed twice
+        assert sorted(rows) == ["runs_sim_a/design/snake/same-id", "runs_sim_b/design/snake/same-id", "same-id"]
+        assert rows["same-id"]["source"] == "arena" and rows["same-id"]["origin"] == "runs"
+        assert rows["runs_sim_a/design/snake/same-id"]["source"] == "simulator"
+        assert rows["runs_sim_a/design/snake/same-id"]["steps"] == 3 and rows["same-id"]["steps"] == 2
+        # a plain session id still means the main runs folder, as the classic viewer expects
+        assert get(f"{base}/api/session?id=same-id")["summary"]["steps"] == 2
+        hist = get(f"{base}/api/history?id=runs_sim_b/design/snake/same-id")
+        assert hist["total"] == 3 and hist["source"] == "simulator" and hist["key"] == "runs_sim_b/design/snake/same-id"
+        assert get(f"{base}/api/verify?id=runs_sim_b/design/snake/same-id")["ok"] is True
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def test_unlabelled_sessions_take_their_source_from_the_folder():
+    assert arena_web.session_source("hosted", "sim") == "arena"
+    assert arena_web.session_source("simulator", "runs") == "simulator"
+    assert arena_web.session_source("unknown", "runs") == "arena"
+    assert arena_web.session_source("unknown", "sim") == "simulator"
+
+
+BOARD = {"game": "snake", "leaderboard": [
+    {"rank": 1, "agentName": "OtherTeam", "score": 1000, "steps": 120, "gameId": "aaaa-1111", "timestamp": 1792100000000},
+    {"rank": 2, "agentName": "CodeYatri", "score": 1000, "steps": 127, "gameId": SID, "timestamp": 1792133933372},
+]}
+
+
+def test_leaderboard_caches_matches_local_sessions_and_keeps_the_last_good_copy(server, monkeypatch):
+    calls = []
+
+    def fake_fetch(game):
+        calls.append(game)
+        return json.loads(json.dumps(BOARD))
+
+    monkeypatch.setattr(arena_web, "fetch_leaderboard_json", fake_fetch)
+    first = get(f"{server}/api/leaderboard?game=snake")
+    assert first["stale"] is False and first["error"] is None and first["fetched_at"]
+    assert first["leaderboard"] == BOARD["leaderboard"]
+    assert first["local"] == {SID: SID}  # the CodeYatri row is the local session
+    assert get(f"{server}/api/leaderboard?game=snake")["fetched_at"] == first["fetched_at"]
+    assert calls == ["snake"]  # served from the 60 s cache
+
+    def offline(game):
+        raise urllib.error.URLError("no network")
+
+    monkeypatch.setattr(arena_web, "LEADERBOARD_TTL_S", 0.0)
+    monkeypatch.setattr(arena_web, "fetch_leaderboard_json", offline)
+    stale = get(f"{server}/api/leaderboard?game=snake")
+    assert stale["stale"] is True and "no network" in stale["error"]
+    assert stale["leaderboard"] == BOARD["leaderboard"] and stale["fetched_at"] == first["fetched_at"]
+
+
+def test_leaderboard_without_a_copy_never_invents_rows(server, monkeypatch):
+    def offline(game):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(arena_web, "fetch_leaderboard_json", offline)
+    body = get(f"{server}/api/leaderboard?game=2048")
+    assert body["leaderboard"] == [] and body["stale"] is True and body["fetched_at"] is None
+    assert "timed out" in body["error"]
+    with pytest.raises(urllib.error.HTTPError) as err:
+        urllib.request.urlopen(f"{server}/api/leaderboard?game=../x", timeout=5)
+    assert err.value.code == 400
+
+
+def test_leaderboard_request_uses_the_agreed_url_timeout_and_user_agent(monkeypatch):
+    seen = {}
+
+    class Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self):
+            return json.dumps(BOARD).encode()
+
+    def fake_urlopen(req, timeout):
+        seen.update(url=req.full_url, ua=req.get_header("User-agent"), timeout=timeout)
+        return Resp()
+
+    monkeypatch.setattr(arena_web.urllib.request, "urlopen", fake_urlopen)
+    assert arena_web.fetch_leaderboard_json("snake")["game"] == "snake"
+    assert seen == {"url": "https://topgameai.com/api/arena/leaderboard/snake", "ua": "CodeYatri-laya-agent/1.0", "timeout": 10.0}
