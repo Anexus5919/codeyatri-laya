@@ -109,6 +109,42 @@ class SpecLog:
                 self.fallbacks += 1
         return line
 
+    @classmethod
+    def resume(cls, path: str | Path, session_id: str, game: str) -> tuple["SpecLog", list[dict], str | None]:
+        """Reopens an existing session log to continue it after a crash.
+
+        Every complete line must verify (hash chain, steps, decision blocks). A torn last line (a
+        crash in the middle of a write) is moved to `<log>.torn` and reported, never kept.
+        Returns (log, lines, torn_text).
+        """
+        path = Path(path)
+        raw = path.read_text(encoding="utf-8") if path.exists() else ""
+        torn = None
+        if raw and not raw.endswith("\n"):
+            cut = raw.rfind("\n") + 1
+            torn = raw[cut:]
+            Path(str(path) + ".torn").write_text(torn, encoding="utf-8")
+            with open(path, "r+", encoding="utf-8", newline="\n") as fh:
+                fh.truncate(len(raw[:cut].encode("utf-8")))
+            raw = raw[:cut]
+        lines = [json.loads(x) for x in raw.splitlines() if x.strip()]
+        if lines:
+            report = verify_log(path)
+            chain_problems = [p for p in report["problems"] if "fallback share" not in p]
+            if chain_problems:
+                raise ValueError(f"cannot resume, the existing log does not verify: {chain_problems}")
+            if lines[0]["session_id"] != session_id or lines[0]["game"] != game:
+                raise ValueError("cannot resume, the log belongs to another session or game")
+        obj = cls.__new__(cls)
+        obj.path, obj.session_id, obj.game = path, session_id, game
+        obj.prev_hash = lines[-1]["hash"] if lines else genesis_hash(session_id)
+        obj.lines = len(lines)
+        applied = [ln for ln in lines if ln["result"] == "applied"]
+        obj.applied = len(applied)
+        obj.fallbacks = sum(1 for ln in applied if ln["decision"].get("source") == "fallback")
+        obj._fh = open(path, "a", encoding="utf-8", newline="\n")
+        return obj, lines, torn
+
     @property
     def fallback_share(self) -> float:
         return self.fallbacks / self.applied if self.applied else 0.0

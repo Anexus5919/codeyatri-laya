@@ -85,6 +85,16 @@ class LayaMoveDecider:
     def note_applied(self) -> None:
         self._since_food += 1
 
+    def restore(self, decided_states: list[dict]) -> None:
+        """Rebuilds per-session memory (moves since the last food) by replaying, in order, the state each
+        applied move was decided on (`state_before`), exactly as decide() + note_applied() saw them live."""
+        self.new_session()
+        for st in decided_states:
+            eaten = (st or {}).get("foodEaten")
+            if eaten is not None and eaten != self._last_eaten:
+                self._last_eaten, self._since_food = eaten, 0
+            self._since_food += 1
+
     def load(self) -> dict:
         try:
             import laya
