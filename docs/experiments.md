@@ -148,3 +148,20 @@ Chance (uniform over legal moves): 0.526.
 - Mistake: a planned epoch-1 vs final comparison was invalid (its duplicate result file was removed; `docs/evidence/eval_2048_cmp_final_seeds300.json` is the valid one). `laya-train` rewrites `checkpoint_latest/` after every epoch, so by the time of the comparison it already held epoch 2; both arms tested the same weights (identical results exposed it). The earlier epoch-1 result (3 of 8 on seeds 100 to 107) was measured before the overwrite and stands, but cannot be rerun. Rule since then: copy a checkpoint to a frozen folder before testing it.
 - Teacher check (offline, no Laya, 80 games): the current priority reader (corner, then order, then empty) reaches 512 in 75% and 1024 in 40%. Weighted one-move variants tied at 512 at best (81%) and lost at 1024 (24%). The teacher stays; the gap to close is imitation (29% vs 75%).
 - Next: round 2. Play 40 games with the frozen final checkpoint, label the boards it reaches with the same teacher, retrain (full model on Kaggle).
+
+## E9: Full-model fine-tune on Kaggle (12k rows, 2 epochs)
+
+- 2026-10-16. Kaggle kernel `codeyatri-laya-2048-finetune` (2x T4): `laya.train.finetune` on the first 12,000 rows of `data/ft2048/train.jsonl` (42,451 questions), soft cross-entropy, 2 epochs, `max_len` 256, encoder and head both trained. Frozen copy: `data/ft2048/ckpt_kaggle_bounded_frozen`.
+- Held-out (20,439 questions): agreement 0.489 to **0.926**, ECE 0.084 to 0.030. Probe (150 positions): **0.987**, corner-losing picks 0.
+- Simulator games, same seeds as E7 and E8:
+
+| checkpoint | seeds 100 to 107 | seeds 300 to 315 | total reaching 512 | 1024 | 2048 |
+|---|---|---|---|---|---|
+| zero-shot (E5) | 0 of 8 | not run | 0 of 8 | 0 | 0 |
+| laptop head only (E8) | 1 of 8 | 6 of 16 | 7 of 24 | 1 | 0 |
+| **Kaggle full model** | 4 of 8 | **15 of 16** | **19 of 24 (79%)** | 14 | 1 (741 points) |
+
+- Median points on seeds 300 to 315: **586** (mean 549). No fallback moves; every log verifies.
+- Interpretation: training the encoder, not just the decision head, is what lets Laya read the fact text the way the priorities intend. The fine-tuned Laya matches the perfect reader it was trained on (75% at 512) and slightly exceeds it on these seeds, likely because its soft preferences break ties better than the reader's fixed order.
+- Decision: this checkpoint plays the real 2048 runs unless a later one (round 1 full data, round 2) beats it on the same seeds.
+- Evidence: `docs/evidence/probe_2048_kaggle_bounded.json`, `docs/evidence/eval_2048_kaggle_bounded_seeds100.json`, `docs/evidence/eval_2048_kaggle_bounded_seeds300.json`.

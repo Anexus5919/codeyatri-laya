@@ -29,7 +29,7 @@ Simulator results with real Laya on an RTX 3050 (16 Oct). Hosted results will re
 E1 and E2 (coin grid): one yes/no per move beats a single multiple-choice question (1.00 vs about 0.65).
 E3 (Snake): naming the direction in the question let Laya's prior about the word outweigh the facts (0.61); removing it gave 0.91, and rewording the eat fact to mirror the other options gave 0.99.
 E4 (Snake, full games): 19 of 20 wins; a changing fact fixes circling.
-E5 (2048): zero-shot near chance, while a reader of the same facts reaches 512 in 75% of games; fine-tuning on priority-reader labels prepared. Details in `docs/experiments.md`.
+E5 (2048): zero-shot near chance, while a reader of the same facts reaches 512 in 75% of games. E7 to E9: fine-tuning Laya on labels from the stated priorities (allowed by the organisers): decision head only 7 of 24 games at 512, full model 19 of 24, with 14 at 1024 and one 2048. Details in `docs/experiments.md`.
 
 ## 6. Representative failures and causes
 

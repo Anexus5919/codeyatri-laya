@@ -50,7 +50,7 @@ Zero-shot Laya never reached a 512 tile in 14 simulated games, even with good fa
 
 - **Dataset (built by us, kept private on Kaggle):** 2048 boards from our local simulator, the exact questions our bot asks, and true/false labels from the stated priorities applied to one-move facts. No search, no other model. Built by [`scripts/make_2048_dataset.py`](scripts/make_2048_dataset.py); round 2 adds the boards our fine-tuned Laya itself reaches.
 - **Training:** Laya's official `laya-train` / `laya.train.finetune`, on a laptop RTX 3050 (decision head) and on Kaggle T4 GPUs (full model, [`notebooks/kaggle_finetune_2048.py`](notebooks/kaggle_finetune_2048.py)).
-- **Result so far:** held-out yes/no agreement 0.49 to 0.83, calibration error 0.084 to 0.015; simulator games reaching 512 went from 0% to about 27% (head only). Full-model results are being added.
+- **Result so far (simulator):** zero-shot Laya reached 512 in 0 games; the decision-head fine-tune in 7 of 24; the full-model fine-tune in **19 of 24 (79%)**, with 14 games reaching 1024 and one reaching 2048 (median 586 points on fresh seeds). Held-out yes/no agreement went from 0.49 to 0.93.
 
 The move is still always Laya's own answer; only the checkpoint changes.
 
