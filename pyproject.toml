@@ -22,7 +22,7 @@ doom = ["vizdoom>=1.2.4", "pillow>=10"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-laya_agent = ["viewer/index.html", "viewer/arena_static/*", "viewer/app_dist/*", "viewer/app_dist/assets/*"]
+laya_agent = ["viewer/index.html", "viewer/arena_static/*", "viewer/app_dist/*", "viewer/app_dist/assets/*", "viewer/doom_static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

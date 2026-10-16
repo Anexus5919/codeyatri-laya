@@ -37,6 +37,8 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from ..arena.spec_log import verify_log
+from .doom_web import STATIC as DOOM_STATIC
+from .doom_web import DoomStore
 
 STATIC = Path(__file__).with_name("arena_static")
 APP_DIST = Path(__file__).with_name("app_dist")
@@ -81,6 +83,7 @@ MAX_TAILS = 48
 MAX_RECORD_SETS = 12
 
 # Public arena leaderboard, fetched server side because the browser cannot call it directly
+
 LEADERBOARD_URL = "https://topgameai.com/api/arena/leaderboard/{game}"
 LEADERBOARD_TTL_S = 60.0
 LEADERBOARD_TIMEOUT_S = 10.0
@@ -381,8 +384,9 @@ class RunStore:
 
     @staticmethod
     def _subdirs(folder: Path) -> list[Path]:
+        # Doom sessions have their own page and log keys (laya_agent.viewer.doom_web); they are not arena sessions
         try:
-            return sorted(p for p in folder.iterdir() if p.is_dir())
+            return sorted(p for p in folder.iterdir() if p.is_dir() and p.name != "doom")
         except OSError:
             return []
 
@@ -755,8 +759,9 @@ class RunStore:
         return result
 
 
-def make_handler(store: RunStore, board: Leaderboard | None = None):
+def make_handler(store: RunStore, board: Leaderboard | None = None, doom: DoomStore | None = None):
     board = board or Leaderboard()
+    doom = doom or DoomStore(store.root, store.sim_roots)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args) -> None:  # keep the console for the bot
@@ -804,7 +809,29 @@ def make_handler(store: RunStore, board: Leaderboard | None = None):
                 except ValueError:
                     return default
 
-            if url.path in APP_PAGES and (APP_DIST / "index.html").is_file():
+            if url.path in ("/doom", "/doom/"):
+                self._send(200, (DOOM_STATIC / "index.html").read_bytes(), "text/html; charset=utf-8")
+            elif url.path == "/api/doom/sessions":
+                self._json(200, {"sessions": doom.sessions()})
+            elif url.path == "/api/doom/session":
+                body = doom.session(arg("id"), int_arg("after", 0))
+                if body is None:
+                    self._json(404, {"error": f"unknown Doom session {arg('id')!r}"})
+                else:
+                    self._json(200, body)
+            elif url.path == "/api/doom/frame":
+                img = doom.frame(arg("id"), arg("step", "latest"))
+                if img is None:
+                    self._send(404, b"no frame", "text/plain")
+                else:
+                    self._send(200, img, "image/jpeg")
+            elif url.path == "/api/doom/verify":
+                body = doom.verify(arg("id"), replay=arg("replay") == "1")
+                if body is None:
+                    self._json(404, {"error": f"unknown Doom session {arg('id')!r}"})
+                else:
+                    self._json(200, body)
+            elif url.path in APP_PAGES and (APP_DIST / "index.html").is_file():
                 self._send(200, (APP_DIST / "index.html").read_bytes(), "text/html; charset=utf-8")
             elif url.path in STATIC_FILES:
                 name, ctype = STATIC_FILES[url.path]
