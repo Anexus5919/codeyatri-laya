@@ -1930,6 +1930,9 @@ code {
   overflow: hidden;
 }
 .doom-frame img {
+  /* Pinned to the box so the whole frame (status bar included) always fits; letterboxed, never cropped */
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
