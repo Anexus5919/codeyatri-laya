@@ -1,0 +1,33 @@
+{
+ "name": "dungeon",
+ "title": "Dungeon arena",
+ "width": "cols",
+ "height": "rows",
+ "player": "hero",
+ "grid": "tiles",
+ "grid_codes": {
+  "wall": [
+   1
+  ],
+  "target": [
+   2
+  ],
+  "enemy": [
+   3
+  ],
+  "hazard": [
+   3,
+   4
+  ]
+ },
+ "target_name": "the exit",
+ "priorities": "Dungeon rules: stepping onto a monster or a pit ends the game. Priorities: stay alive, never step onto a monster or a pit, avoid cells next to a monster, reach the exit, otherwise move closer to the exit.",
+ "points": {
+  "field": "score",
+  "cap": 1000
+ },
+ "extra_state_fields": [
+  "hp",
+  "turn"
+ ]
+}
