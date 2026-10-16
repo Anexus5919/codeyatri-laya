@@ -1,0 +1,220 @@
+{
+ "policy": "laya",
+ "model": "english",
+ "summary": {
+  "defend_the_center": {
+   "games": 3,
+   "kills_mean": 5.33,
+   "exited": 0,
+   "died": 3,
+   "explored_mean": 43.3
+  },
+  "defend_the_line": {
+   "games": 2,
+   "kills_mean": 13.5,
+   "exited": 0,
+   "died": 2,
+   "explored_mean": 18.5
+  },
+  "deadly_corridor": {
+   "games": 3,
+   "kills_mean": 2,
+   "exited": 0,
+   "died": 3,
+   "explored_mean": 12
+  },
+  "freedoom1:E1M1": {
+   "games": 1,
+   "kills_mean": 0,
+   "exited": 0,
+   "died": 0,
+   "explored_mean": 6
+  },
+  "freedoom1:E1M2": {
+   "games": 1,
+   "kills_mean": 2,
+   "exited": 0,
+   "died": 1,
+   "explored_mean": 18
+  },
+  "freedoom2:MAP01": {
+   "games": 1,
+   "kills_mean": 0,
+   "exited": 0,
+   "died": 0,
+   "explored_mean": 1
+  },
+  "all": {
+   "kills_total": 51,
+   "exited": 0,
+   "died": 9
+  }
+ },
+ "rows": [
+  {
+   "scenario": "defend_the_center",
+   "seed": 11,
+   "kills": 2,
+   "items": 0,
+   "secrets": 0,
+   "health": -4,
+   "dead": true,
+   "exited": false,
+   "steps": 288,
+   "explored_cells": 56,
+   "log_verified": true,
+   "session_id": "doom-535f37e9-4f70-4b8d-b89b-1e9f7e340498",
+   "seconds": 73.6
+  },
+  {
+   "scenario": "defend_the_center",
+   "seed": 12,
+   "kills": 1,
+   "items": 0,
+   "secrets": 0,
+   "health": -8,
+   "dead": true,
+   "exited": false,
+   "steps": 121,
+   "explored_cells": 20,
+   "log_verified": true,
+   "session_id": "doom-6c966766-c1c1-43af-ba33-d8e7791b311a",
+   "seconds": 26.7
+  },
+  {
+   "scenario": "defend_the_center",
+   "seed": 13,
+   "kills": 13,
+   "items": 0,
+   "secrets": 0,
+   "health": 0,
+   "dead": true,
+   "exited": false,
+   "steps": 262,
+   "explored_cells": 54,
+   "log_verified": true,
+   "session_id": "doom-8418a264-b005-4e45-b915-b4e578a3f97a",
+   "seconds": 58.0
+  },
+  {
+   "scenario": "defend_the_line",
+   "seed": 11,
+   "kills": 7,
+   "items": 0,
+   "secrets": 0,
+   "health": -2,
+   "dead": true,
+   "exited": false,
+   "steps": 82,
+   "explored_cells": 18,
+   "log_verified": true,
+   "session_id": "doom-cafb1e94-dd57-489f-8211-f5794eb5f091",
+   "seconds": 16.8
+  },
+  {
+   "scenario": "defend_the_line",
+   "seed": 12,
+   "kills": 20,
+   "items": 0,
+   "secrets": 0,
+   "health": -22,
+   "dead": true,
+   "exited": false,
+   "steps": 331,
+   "explored_cells": 19,
+   "log_verified": true,
+   "session_id": "doom-f8288a9f-a979-4933-b270-51e7af0e916b",
+   "seconds": 74.3
+  },
+  {
+   "scenario": "deadly_corridor",
+   "seed": 11,
+   "kills": 2,
+   "items": 0,
+   "secrets": 0,
+   "health": -14,
+   "dead": true,
+   "exited": false,
+   "steps": 26,
+   "explored_cells": 12,
+   "log_verified": true,
+   "session_id": "doom-3fdbef7d-ed4b-4a58-81d8-c411a4c7ead4",
+   "seconds": 7.5
+  },
+  {
+   "scenario": "deadly_corridor",
+   "seed": 12,
+   "kills": 2,
+   "items": 0,
+   "secrets": 0,
+   "health": -2,
+   "dead": true,
+   "exited": false,
+   "steps": 24,
+   "explored_cells": 12,
+   "log_verified": true,
+   "session_id": "doom-93044e7d-5618-4b4c-9bfa-7c89c77419fd",
+   "seconds": 7.0
+  },
+  {
+   "scenario": "deadly_corridor",
+   "seed": 13,
+   "kills": 2,
+   "items": 0,
+   "secrets": 0,
+   "health": -26,
+   "dead": true,
+   "exited": false,
+   "steps": 24,
+   "explored_cells": 12,
+   "log_verified": true,
+   "session_id": "doom-08987d8c-255e-4da2-8158-edbcd32189f9",
+   "seconds": 7.1
+  },
+  {
+   "scenario": "freedoom1:E1M1",
+   "seed": 11,
+   "kills": 0,
+   "items": 0,
+   "secrets": 0,
+   "health": 100,
+   "dead": false,
+   "exited": false,
+   "steps": 1574,
+   "explored_cells": 6,
+   "log_verified": true,
+   "session_id": "doom-3feaddc1-6fa6-4382-8411-72b600236bad",
+   "seconds": 316.7
+  },
+  {
+   "scenario": "freedoom1:E1M2",
+   "seed": 11,
+   "kills": 2,
+   "items": 0,
+   "secrets": 0,
+   "health": -5,
+   "dead": true,
+   "exited": false,
+   "steps": 135,
+   "explored_cells": 18,
+   "log_verified": true,
+   "session_id": "doom-1961e39b-a467-4f21-be09-5d8eb2893880",
+   "seconds": 38.7
+  },
+  {
+   "scenario": "freedoom2:MAP01",
+   "seed": 11,
+   "kills": 0,
+   "items": 0,
+   "secrets": 0,
+   "health": 100,
+   "dead": false,
+   "exited": false,
+   "steps": 1574,
+   "explored_cells": 1,
+   "log_verified": true,
+   "session_id": "doom-0c795a37-d26a-4ff9-9c01-728a73339125",
+   "seconds": 353.6
+  }
+ ]
+}
