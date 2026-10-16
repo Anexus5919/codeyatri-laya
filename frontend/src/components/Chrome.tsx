@@ -80,6 +80,9 @@ function GameSwitch() {
           </button>
         );
       })}
+      <button type="button" aria-pressed={false} onClick={() => window.location.assign("/doom")} title="Stage 3: the real Doom, every action decided by Laya">
+        Doom
+      </button>
     </div>
   );
 }
