@@ -83,20 +83,19 @@ Then upload `data\ft2048_r2` as a new dataset version and rerun the full kernel 
 
 Rules check before any counted run with a fine-tuned checkpoint: the organisers must have said yes (mentor question 4).
 
-## 7. Stage 3 (Doom-style): zero-shot, no training
+## 7. Stage 3: the real Doom (ViZDoom + Freedoom, fine-tuned Laya)
 
-The game is revealed only after the 2048 unlock, so there is no time to train. We use the method that
-took Snake from 0 foods to 19 wins of 20 without training: one yes/no question per direction, facts
-only, no direction word in the question, a priorities line, legal moves only, base `english` checkpoint.
+Ruling (16 Oct, ~20:00): stage 3 is the actual Doom in an open-source engine, every decision by Laya, real time.
+Design rules are in `docs/decisions.md`.
 
-Prepared in advance: `src/laya_agent/arena/grid_facts.py` (generic per-direction facts for any grid
-game: wall, hazard, enemy adjacency, closer/farther to the target, dead-end pocket). On reveal:
-1. Create one session, save the raw state, map its fields onto `GridView` (player, walls, hazards, enemies, targets).
-2. Write the priorities line (stay alive, avoid enemies, reach the target) and the state text.
-3. Write the mapping as JSON (see the docstring of `src/laya_agent/arena/grid_game.py`: player, grid codes
-   or cell lists for walls, hazards, enemies and targets, priorities, points field) and check the facts on the
-   saved state: `python -c "from laya_agent.arena.grid_game import *; ..."`. Every direction's fact must be
-   true and contain no verdict. No code change is needed; the runner loads it with `--grid-spec doom.json --game doom`.
-4. Play one session with the viewer visible; iterate on wording from the logs, as with Snake E3.
-Budget: 30 to 60 minutes. The viewer and the log format need no change (same four actions).
-If the state is pixels rather than structured fields, ask the organisers for a structured state; Laya reads text only.
+```powershell
+.venv\Scripts\activate
+# terminal 1: dashboard (Doom page at http://127.0.0.1:8770/doom)
+python -m laya_agent.viewer.arena_web runs --port 8770 --sim-roots "runs_sim*"
+# terminal 2: a judged episode (game window visible, real time, frames for the dashboard)
+python -m laya_agent.doom.runner --scenario freedoom1:E1M1 --model data\ftdoom\ckpt_doom_frozen --realtime --visible --frames
+```
+- `--scenario` takes `freedoom1:E1M1` to `E1M9`, `freedoom2:MAP01` and up, or a ViZDoom scenario (`defend_the_center`, `deadly_corridor`, `deathmatch`).
+- `--skill 1..5` sets the difficulty (default 3), `--minutes` the time limit (default 10).
+- Before judging: nothing else on the GPU; the first Laya call is a warm-up and is not timed.
+- After an episode: the Doom page shows the proof checks; "Replay the recording in the engine" replays the demo and compares the result.

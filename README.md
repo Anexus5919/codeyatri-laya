@@ -85,9 +85,23 @@ pytest -q
 
 Each session writes three files to `runs/<game>/`: `<session_id>.jsonl` (the submission log, hash-chained), `<session_id>.events.jsonl` (facts and raw P(true) for the viewer) and `<session_id>.final.json` (the game's final response, saved the moment it ends). The runner prints a verifier report at the end: hash chain, contiguous steps, decision blocks, fallback share, and a match against the final response.
 
-## Stage 3 (Doom-style)
+## Stage 3: the real Doom
 
-Revealed only after 2048, so there is no time to train. We use the zero-shot method that took Snake to 1000: [`grid_facts.py`](src/laya_agent/arena/grid_facts.py) computes the same per-direction facts for any grid game, and [`grid_game.py`](src/laya_agent/arena/grid_game.py) registers a new game from a short JSON field mapping (`--grid-spec`). Rehearsed on an unseen practice game: 5 of 5 wins after one mapping fix.
+The organisers confirmed stage 3 is the actual Doom, played in an open-source engine on our own machine with Laya making every decision. We use [ViZDoom](https://github.com/Farama-Foundation/ViZDoom) (GPL, built on ZDoom) with the free [Freedoom](https://freedoom.github.io/) game data (BSD), so no paid game files are needed. Code: [`src/laya_agent/doom/`](src/laya_agent/doom/).
+
+- **What Laya reads.** The engine's own state, turned into text: health, ammo, enemies in view with their angle and distance, and one sentence per action saying what that action does right now (the shot hits the Imp or hits nothing, a 5 degree turn puts the Imp in the crosshair, forward is open for 400 units into unexplored ground, a step left leaves a fireball's path, use opens the door ahead). No vision model: the screen is for people only.
+- **How an action is chosen.** One Laya call per decision with one yes/no question per offered action (shoot, turn 5 or 30 degrees left or right, forward, back, strafe left or right, use). The highest P(yes) is played and held for 4 game tics. No rule-based override: every logged decision has source `laya`.
+- **No search.** Facts are one-step readings (a straight line to the first wall, where an enemy ends up after one turn). Memory is only what the player has done and seen: visited ground, the last action, a door already pressed.
+- **Real time.** The engine can run at Doom's 35 tics a second while Laya decides (about 100 to 170 ms per decision on the RTX 3050), or wait for each decision.
+- **Proof.** Each episode writes the same hash-chained log as the arena games (Doom's action names as the probability keys), the full decision record, and the engine's demo recording, whose sha256 is in the final record. Replaying the recording in the engine reproduces the result; the Doom page of the dashboard runs that check.
+- **Training.** Laya is fine-tuned on Doom facts with labels from a fixed priority reading of the same facts, collected from offline games on the nine Freedoom E1 maps, eight Doom II style maps and the ViZDoom combat scenarios.
+
+```bash
+pip install -e ".[doom]"
+# one episode of the first Freedoom level, game window visible, real time, screen captures for the dashboard
+python -m laya_agent.doom.runner --scenario freedoom1:E1M1 --model data/ftdoom/ckpt --realtime --visible --frames
+# dashboard: http://127.0.0.1:8770/doom (or the Doom button in the header)
+```
 
 ## Repository layout
 
