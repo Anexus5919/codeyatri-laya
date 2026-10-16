@@ -1,8 +1,8 @@
 import { ArenaStage, RendererToggle } from "../components/ArenaStage";
 import { DecisionPanel } from "../components/DecisionPanel";
-import { GameGlyph } from "../components/Glyphs";
 import { Timeline } from "../components/Timeline";
-import { Vitals } from "../components/Vitals";
+import { StatsLine } from "../components/Vitals";
+import { chooseSource, newestFor } from "../lib/feed";
 import { gameLabel } from "../lib/derive";
 import { decisionContext, useArenaFrame } from "../lib/hooks";
 import { store, useStore } from "../lib/store";
@@ -10,7 +10,7 @@ import { store, useStore } from "../lib/store";
 function PhaseToggle() {
   const phase = useStore((s) => s.phase);
   return (
-    <div className="seg" role="group" aria-label="Board shown for the selected line">
+    <div className="seg seg-small" role="group" aria-label="Board shown for the selected line">
       <button type="button" aria-pressed={phase === "before"} onClick={() => store.set({ phase: "before" })}>
         Before move
       </button>
@@ -21,27 +21,47 @@ function PhaseToggle() {
   );
 }
 
-function StageLegend({ probes, trace, game }: { probes: boolean; trace: boolean; game: string | null | undefined }) {
-  if (game !== "snake" && game !== "2048") return null;
-  if (!probes && !(trace && game === "snake")) return null;
+function EmptyState() {
+  const game = useStore((s) => s.game) ?? "snake";
+  const source = useStore((s) => s.source);
+  const sessions = useStore((s) => s.sessions);
+  const loaded = useStore((s) => s.sessionsLoaded);
+  const simRoots = useStore((s) => s.simRoots);
+  if (!loaded) return <div className="view empty-view"><p className="muted">Looking for sessions</p></div>;
+  const name = gameLabel(game === "unknown" ? null : game);
+  const other = source === "arena" ? newestFor(sessions, "simulator", game) : newestFor(sessions, "arena", game);
   return (
-    <ul className="stage-legend" aria-label="Board legend">
-      {probes ? (
-        <li>
-          <span className="lg lg-probe" aria-hidden="true" /> column height = Laya's yes-probability, ember = chosen
-        </li>
-      ) : null}
-      {probes ? (
-        <li>
-          <span className="lg lg-cross" aria-hidden="true" /> cross = direction not asked
-        </li>
-      ) : null}
-      {trace && game === "snake" ? (
-        <li>
-          <span className="lg lg-trace" aria-hidden="true" /> cyan line = the recorded move into this board
-        </li>
-      ) : null}
-    </ul>
+    <div className="view empty-view">
+      <div className="empty">
+        {source === "arena" ? (
+          <>
+            <h1>No arena session for {name} yet.</h1>
+            <p>{game === "2048" ? "It unlocks after the Snake run is verified. Real 2048 sessions appear here as soon as they are written to runs/2048." : `Real ${name} sessions appear here as soon as the runner writes them.`}</p>
+          </>
+        ) : (
+          <>
+            <h1>No simulator run for {name} in the loaded folders.</h1>
+            <p>Simulator runs are test runs on the local simulator, never arena results.</p>
+          </>
+        )}
+        <div className="empty-actions">
+          {source === "arena" ? (
+            <button type="button" className="btn" disabled={!other} onClick={() => chooseSource("simulator")}>
+              View simulator runs for {name}
+            </button>
+          ) : (
+            <button type="button" className="btn" disabled={!other} onClick={() => chooseSource("arena")}>
+              View arena sessions for {name}
+            </button>
+          )}
+        </div>
+        {source === "arena" && !other && simRoots.length === 0 ? (
+          <p className="muted small">
+            No simulator folders are loaded. Start the viewer with <code>--sim-roots "runs_sim*"</code> to include them.
+          </p>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -54,17 +74,19 @@ export function ArenaView() {
   const sessionId = useStore((s) => s.sessionId);
   const loaded = useStore((s) => s.feed?.loaded ?? false);
   const pendingText = useStore((s) => s.feed?.pending?.state_text ?? null);
-  const history = frame.mode === "history";
+  const hasFeed = useStore((s) => !!s.feed);
   const error = useStore((s) => (s.feed && !s.feed.loaded ? s.feed.error : null));
+  const history = frame.mode === "history";
 
+  if (!hasFeed) return <EmptyState />;
   if (error) {
     return (
-      <div className="view">
-        <div className="panel error-panel" role="alert">
-          <h2>This session cannot be loaded</h2>
-          <p className="sub">The viewer API answered: {error}</p>
+      <div className="view empty-view">
+        <div className="empty" role="alert">
+          <h1>This session cannot be loaded.</h1>
+          <p>The viewer API answered: {error}</p>
           <p>
-            <a href="#/sessions">Choose a session</a> from the runs folder instead.
+            <a href="#/sessions">Choose a session</a> instead.
           </p>
         </div>
       </div>
@@ -73,37 +95,26 @@ export function ArenaView() {
 
   return (
     <div className="view arena-view" data-env={envKind ?? "unknown"}>
-      <div className="arena-vitals">
-        <Vitals />
-      </div>
-      <section className="stage-card" aria-label="Arena board">
-        <header className="stage-head">
-          <div className="stage-title">
-            <GameGlyph game={game} size={18} />
-            <h2>{gameLabel(game)}</h2>
-            <span className="caption">{loaded ? frame.board.caption : "Loading the session log"}</span>
-          </div>
-          <div className="stage-tools">
-            {history ? <PhaseToggle /> : null}
-            <RendererToggle game={game} />
-          </div>
-        </header>
-        <div className="stage-body">
-          {envKind === "simulator" ? (
-            <div className="sim-watermark" aria-hidden="true">
-              SIMULATOR
+      <div className="arena-main">
+        <StatsLine />
+        <section className="board-area" aria-label={`${gameLabel(game)} board`}>
+          <div className="board-head">
+            <span className="board-caption">{loaded ? frame.board.caption : "Loading the session log"}</span>
+            <div className="board-tools">
+              {history ? <PhaseToggle /> : null}
+              <RendererToggle game={game} />
             </div>
-          ) : null}
-          <ArenaStage game={game} frame={frame.board} />
-          <StageLegend probes={!!frame.board.probes} trace={!!frame.board.action} game={game} />
-        </div>
-      </section>
-      <div className="arena-decision">
-        <DecisionPanel decision={frame.decision} sessionId={sessionId} simulator={envKind === "simulator"} context={decisionContext(frame, total, status)} pendingText={pendingText} />
-      </div>
-      <div className="arena-timeline">
+          </div>
+          <div className="board-stage">
+            {envKind === "simulator" ? <span className="sim-tag">Simulator run, not an arena result</span> : null}
+            <ArenaStage game={game} frame={frame.board} />
+          </div>
+        </section>
         <Timeline />
       </div>
+      <aside className="arena-side">
+        <DecisionPanel decision={frame.decision} sessionId={sessionId} simulator={envKind === "simulator"} context={decisionContext(frame, total, status)} pendingText={pendingText} />
+      </aside>
     </div>
   );
 }

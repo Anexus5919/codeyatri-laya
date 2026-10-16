@@ -48,12 +48,17 @@ export interface SessionItem {
   points_source?: string;
   started_ts?: string | null;
   folder?: string;
+  key?: string;
+  source?: "arena" | "simulator";
+  origin?: "runs" | "sim";
 }
 
 export interface SessionsResponse {
   root: string;
   sessions: SessionItem[];
   newest: string | null;
+  newest_key?: string | null;
+  sim_roots?: string[];
 }
 
 export interface DecisionEvent {
@@ -123,6 +128,8 @@ export interface Summary {
   design?: string | null;
   started_ts?: string | null;
   ended_ts?: string | null;
+  source?: "arena" | "simulator";
+  key?: string;
 }
 
 export interface SessionStart {
@@ -151,6 +158,8 @@ export interface SessionEnd {
 
 export interface HistoryResponse {
   session_id: string;
+  key?: string;
+  source?: "arena" | "simulator";
   game: string | null;
   folder: string;
   reset: boolean;

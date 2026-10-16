@@ -1,14 +1,15 @@
 import { useEffect } from "react";
 import { MotionConfig } from "motion/react";
-import { Backdrop, EnvBand, Rail, TopBar } from "./components/Chrome";
+import { Backdrop, Rail, TopBar } from "./components/Chrome";
 import { useStore } from "./lib/store";
 import { ArenaView } from "./views/ArenaView";
 import { AuditView } from "./views/AuditView";
 import { HistoryView } from "./views/HistoryView";
+import { LeaderboardView } from "./views/LeaderboardView";
 import { SessionsView } from "./views/SessionsView";
 import { TimingView } from "./views/TimingView";
 
-const TITLES = { arena: "Live arena", sessions: "Sessions", history: "Decision history", timing: "Timing", audit: "Audit" } as const;
+const TITLES = { arena: "Live arena", sessions: "Sessions", history: "Decision history", timing: "Timing", audit: "Audit", leaderboard: "Leaderboard" } as const;
 
 export function App() {
   const view = useStore((s) => s.view);
@@ -32,13 +33,13 @@ export function App() {
         <Rail />
         <div className="main-col">
           <TopBar />
-          <EnvBand />
           <main id="main" className="main" tabIndex={-1}>
             {view === "arena" ? <ArenaView /> : null}
             {view === "sessions" ? <SessionsView /> : null}
             {view === "history" ? <HistoryView /> : null}
             {view === "timing" ? <TimingView /> : null}
             {view === "audit" ? <AuditView /> : null}
+            {view === "leaderboard" ? <LeaderboardView /> : null}
           </main>
         </div>
       </div>

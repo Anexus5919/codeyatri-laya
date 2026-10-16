@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { EnvBadge, StatusBadge } from "../components/Badges";
 import { GameGlyph } from "../components/Glyphs";
-import { selectSession } from "../lib/feed";
-import { fmtAge, fmtInt, fmtPct, fmtTs, gameLabel, shortId } from "../lib/derive";
+import { keyOf, selectSession, sourceOf } from "../lib/feed";
+import { fmtAge, fmtInt, fmtPct, gameLabel, shortId } from "../lib/derive";
 import { navigate } from "../lib/route";
-import { store, useStore } from "../lib/store";
+import { store, useStore, type DataSource } from "../lib/store";
 import type { SessionItem } from "../lib/types";
 
-type EnvFilter = "all" | "hosted" | "simulator";
+type SourceFilter = "all" | DataSource;
 
 function outcome(s: SessionItem): string {
   if (s.status !== "finished") return "in progress or stopped";
@@ -21,20 +21,25 @@ export function SessionsView() {
   const loaded = useStore((s) => s.sessionsLoaded);
   const error = useStore((s) => s.sessionsError);
   const root = useStore((s) => s.root);
+  const simRoots = useStore((s) => s.simRoots);
   const current = useStore((s) => s.sessionId);
   const follow = useStore((s) => s.followNewest);
-  const [env, setEnv] = useState<EnvFilter>("all");
+  const headerSource = useStore((s) => s.source);
+  const [src, setSrc] = useState<SourceFilter>(headerSource);
   const [game, setGame] = useState<string>("all");
 
   const games = useMemo(() => [...new Set(sessions.map((s) => s.game ?? "unknown"))], [sessions]);
   const shown = useMemo(
-    () => sessions.filter((s) => (env === "all" || s.env_kind === env) && (game === "all" || (s.game ?? "unknown") === game)),
-    [sessions, env, game],
+    () => sessions.filter((s) => (src === "all" || sourceOf(s) === src) && (game === "all" || (s.game ?? "unknown") === game)),
+    [sessions, src, game],
   );
-  const counts = useMemo(() => ({ hosted: sessions.filter((s) => s.env_kind === "hosted").length, simulator: sessions.filter((s) => s.env_kind === "simulator").length }), [sessions]);
+  const counts = useMemo(
+    () => ({ arena: sessions.filter((s) => sourceOf(s) === "arena").length, simulator: sessions.filter((s) => sourceOf(s) === "simulator").length }),
+    [sessions],
+  );
 
-  const open = (id: string) => {
-    selectSession(id, { manual: true });
+  const open = (s: SessionItem) => {
+    selectSession(keyOf(s), { manual: true });
     navigate("arena");
   };
 
@@ -44,21 +49,22 @@ export function SessionsView() {
         <div>
           <h1>Sessions</h1>
           <p className="sub">
-            Newest first, from <code>{root || "the runs folder"}</code> and one folder level below it.
+            Newest first. Arena sessions from <code>{root || "runs"}</code>
+            {simRoots.length ? `, simulator runs from ${simRoots.length} folder${simRoots.length === 1 ? "" : "s"}` : ", no simulator folders loaded"}.
           </p>
         </div>
         <label className="switch">
           <input type="checkbox" checked={follow} onChange={(e) => store.set({ followNewest: e.target.checked })} />
           <span className="switch-track" aria-hidden="true" />
-          <span>Follow the newest session</span>
+          <span>Follow new sessions</span>
         </label>
       </header>
 
       <div className="filters" role="group" aria-label="Filter sessions">
-        <div className="seg" role="group" aria-label="Environment">
-          {(["all", "hosted", "simulator"] as EnvFilter[]).map((k) => (
-            <button key={k} type="button" aria-pressed={env === k} onClick={() => setEnv(k)}>
-              {k === "all" ? `All ${sessions.length}` : k === "hosted" ? `Hosted ${counts.hosted}` : `Simulator ${counts.simulator}`}
+        <div className="seg" role="group" aria-label="Data source">
+          {(["arena", "simulator", "all"] as SourceFilter[]).map((k) => (
+            <button key={k} type="button" aria-pressed={src === k} onClick={() => setSrc(k)}>
+              {k === "all" ? `All ${sessions.length}` : k === "arena" ? `Arena (real) ${counts.arena}` : `Simulator (test) ${counts.simulator}`}
             </button>
           ))}
         </div>
@@ -74,57 +80,39 @@ export function SessionsView() {
         </div>
       </div>
 
-      {error ? <p className="callout callout-warn">Cannot reach the API: {error}</p> : null}
-      {!loaded ? <p className="muted">Loading sessions...</p> : null}
-      {loaded && !sessions.length ? <p className="empty-note">No sessions in this runs folder yet. Start the runner and they appear here.</p> : null}
+      {error ? <p className="warn-text">Cannot reach the API: {error}</p> : null}
+      {!loaded ? <p className="muted">Loading sessions</p> : null}
+      {loaded && !shown.length ? <p className="muted">No sessions match these filters.</p> : null}
 
       <ul className="session-list">
         {shown.map((s) => (
-          <li key={s.session_id}>
-            <button type="button" className={`session-row env-${s.env_kind ?? "unknown"}${s.session_id === current ? " is-current" : ""}`} onClick={() => open(s.session_id)} aria-current={s.session_id === current ? "true" : undefined}>
+          <li key={keyOf(s)}>
+            <button type="button" className={`session-row src-${sourceOf(s)}${keyOf(s) === current ? " is-current" : ""}`} onClick={() => open(s)} aria-current={keyOf(s) === current ? "true" : undefined}>
+              <span className="sr-game">
+                <GameGlyph game={s.game} size={16} />
+                <span>{gameLabel(s.game)}</span>
+              </span>
               <span className="sr-env">
                 <EnvBadge kind={s.env_kind} env={s.env} />
               </span>
-              <span className="sr-game">
-                <GameGlyph game={s.game} size={18} />
-                <span>{gameLabel(s.game)}</span>
-              </span>
               <span className="sr-id">
-                <span className="mono strong">{shortId(s.session_id)}</span>
-                <span className="mono small muted">{s.session_id}</span>
-              </span>
-              <span className="sr-agent">
-                <span className="small muted">agent</span>
-                <span>{s.agent_name ?? "not logged"}</span>
-              </span>
-              <span className="sr-model">
-                <span className="small muted">model / device</span>
-                <span className="mono" title={s.model_source ?? undefined}>
-                  {s.model ?? "n/a"} / {s.device ?? "n/a"}
+                <span className="mono">{shortId(s.session_id)}</span>
+                <span className="small muted" title={keyOf(s)}>
+                  {s.agent_name ?? "agent not logged"}, {s.model ?? "model n/a"} on {s.device ?? "n/a"}
+                  {s.origin === "sim" ? `, ${keyOf(s).split("/").slice(0, -1).join("/")}` : ""}
                 </span>
               </span>
               <span className="sr-status">
                 <StatusBadge status={s.status} ageS={s.age_s} />
                 <span className="small muted">{fmtAge(s.age_s)}</span>
               </span>
-              <span className="sr-nums">
-                <span>
-                  <b className="mono">{fmtInt(s.steps)}</b> <span className="small muted">applied</span>
-                </span>
-                <span>
-                  <b className="mono">{fmtInt(s.rejected ?? 0)}</b> <span className="small muted">rejected</span>
-                </span>
-                <span>
-                  <b className="mono">{fmtPct(s.fallback_share ?? 0)}</b> <span className="small muted">fallback</span>
-                </span>
+              <span className="sr-nums num">
+                {fmtInt(s.steps)} moves, {fmtInt(s.rejected ?? 0)} rejected, fallback {fmtPct(s.fallback_share ?? 0)}
               </span>
               <span className="sr-outcome">
-                <b className="mono big">{fmtInt(s.points)}</b>
-                <span className="small muted">
-                  points, {outcome(s)}
-                </span>
+                <b className="num">{fmtInt(s.points)}</b>
+                <span className="small muted">points, {outcome(s)}</span>
               </span>
-              <span className="sr-when small muted">{s.started_ts ? `started ${fmtTs(s.started_ts)}` : ""}</span>
             </button>
           </li>
         ))}

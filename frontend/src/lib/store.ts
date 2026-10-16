@@ -7,12 +7,13 @@ import type {
   VerifyResult,
 } from "./types";
 
-export type View = "arena" | "sessions" | "history" | "timing" | "audit";
-export const VIEWS: readonly View[] = ["arena", "sessions", "history", "timing", "audit"];
+export type View = "arena" | "sessions" | "history" | "timing" | "audit" | "leaderboard";
+export const VIEWS: readonly View[] = ["arena", "sessions", "history", "timing", "audit", "leaderboard"];
 
 export type Selection = { mode: "live" } | { mode: "history"; i: number; totalAtEntry: number };
 export type BoardPhase = "before" | "after";
 export type RendererPref = "auto" | "3d" | "2d";
+export type DataSource = "arena" | "simulator";
 
 export interface Feed {
   sessionId: string;
@@ -31,6 +32,10 @@ export interface AppState {
   sessionsLoaded: boolean;
   sessionsError: string | null;
   root: string;
+  simRoots: string[];
+  // Header switchers: which data source and game are being viewed
+  source: DataSource;
+  game: string | null;
   followNewest: boolean;
   sessionId: string | null;
   newSessionNotice: string | null;
@@ -95,6 +100,9 @@ const initial: AppState = {
   sessionsLoaded: false,
   sessionsError: null,
   root: "",
+  simRoots: [],
+  source: "arena",
+  game: null,
   followNewest: true,
   sessionId: null,
   newSessionNotice: null,

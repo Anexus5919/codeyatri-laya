@@ -73,6 +73,14 @@ export const KIND_LABEL: Record<string, string> = {
 
 const NOT_ASKED_KINDS = new Set(["reverse", "noop", "blocked", "wall"]);
 
+// The row already names the direction, so a leading "move up: " is dropped from the logged fact.
+// In the noul_nodir design that remainder is exactly the text that went into the question.
+export function factBody(dir: Dir, fact: string | null): string | null {
+  if (!fact) return null;
+  const prefix = `move ${dir}: `;
+  return fact.toLowerCase().startsWith(prefix) ? fact.slice(prefix.length) : fact;
+}
+
 export interface DirView {
   dir: Dir;
   asked: boolean | null; // null when p_true was not logged at all
@@ -115,9 +123,9 @@ function dirViews(ev: DecisionEvent | null | undefined, probs: DirMap<number> | 
     const fact = ev?.facts?.[d] ?? null;
     let notAskedReason: string | null = null;
     if (asked === false) {
-      if (kind && NOT_ASKED_KINDS.has(kind)) notAskedReason = `illegal: ${KIND_LABEL[kind] ?? kind}`;
-      else if (rejectedHere.has(d)) notAskedReason = "the server rejected this move earlier in the same step";
-      else notAskedReason = "no question was sent for this direction";
+      if (kind && NOT_ASKED_KINDS.has(kind)) notAskedReason = `illegal move (${KIND_LABEL[kind] ?? kind})`;
+      else if (rejectedHere.has(d)) notAskedReason = "rejected by the game earlier in this step";
+      else notAskedReason = "no question was sent";
     }
     return {
       dir: d,
@@ -406,19 +414,19 @@ export function scalarFields(state: GameState | null | undefined): [string, stri
 export function statusText(status: Status | undefined | null, summary: Summary | null | undefined, ageS: number | null | undefined): { label: string; detail: string } {
   switch (status) {
     case "live":
-      return { label: "LIVE", detail: `log written ${fmtAge(ageS)}` };
+      return { label: "Live", detail: `log written ${fmtAge(ageS)}` };
     case "idle":
-      return { label: "IDLE", detail: `no new writes for ${Math.round(ageS ?? 0)} s, no session_end yet` };
+      return { label: "Idle", detail: `no new writes for ${Math.round(ageS ?? 0)} s, no session_end yet` };
     case "interrupted":
-      return { label: "INTERRUPTED", detail: `no session_end, last write ${fmtAge(ageS)}` };
+      return { label: "Interrupted", detail: `no session_end, last write ${fmtAge(ageS)}` };
     case "finished": {
       const won = summary?.won;
       const pts = summary?.points;
       const outcome = won === true ? "won" : won === false ? "not won" : "outcome not logged";
-      return { label: "FINISHED", detail: `${outcome}${isNum(pts) ? `, ${fmtInt(pts)} points` : ""}` };
+      return { label: won === true ? "Finished, won" : "Finished", detail: `${outcome}${isNum(pts) ? `, ${fmtInt(pts)} points` : ""}` };
     }
     default:
-      return { label: "LOADING", detail: "" };
+      return { label: "Loading", detail: "" };
   }
 }
 

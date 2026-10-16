@@ -7,11 +7,11 @@ import type { TimingStat } from "../lib/types";
 
 type Key = "decide_ms" | "laya_ms" | "api_ms" | "turn_ms";
 
-const SERIES: { key: Key; label: string; what: string; tone: "ember" | "cyan" | "ivory" | "acid" }[] = [
-  { key: "decide_ms", label: "Decide", what: "facts, one Laya call and the pick (submission log timing.decide_ms)", tone: "ember" },
-  { key: "laya_ms", label: "Laya call", what: "the Laya forward pass alone (decision event laya_ms)", tone: "acid" },
-  { key: "api_ms", label: "Game API", what: "sending the move and reading the response (timing.api_ms)", tone: "cyan" },
-  { key: "turn_ms", label: "Turn", what: "previous game response to this one (timing.turn_ms)", tone: "ivory" },
+const SERIES: { key: Key; label: string; what: string; tone: "ivory" | "teal" | "steel" | "muted" }[] = [
+  { key: "decide_ms", label: "Decide", what: "Facts, one Laya call and the pick (timing.decide_ms)", tone: "ivory" },
+  { key: "laya_ms", label: "Laya call", what: "The Laya forward pass alone (laya_ms in the decision event)", tone: "teal" },
+  { key: "api_ms", label: "Game API", what: "Sending the move and reading the response (timing.api_ms)", tone: "steel" },
+  { key: "turn_ms", label: "Turn", what: "Previous game response to this one (timing.turn_ms)", tone: "muted" },
 ];
 
 function useWidth() {
@@ -75,7 +75,7 @@ export function TimingView() {
       <header className="view-head">
         <div>
           <h1>Timing</h1>
-          <p className="sub">Per-line values as logged. Each chart runs from 0 at the bottom to its max at the top. Point at a chart to read a line, click to inspect it across the dashboard.</p>
+          <p className="sub">Per-line values as logged, each chart from 0 to its max. Click a chart to inspect that line.</p>
         </div>
         {sel !== null ? (
           <button type="button" className="btn-live" onClick={backToLive}>
@@ -83,7 +83,7 @@ export function TimingView() {
           </button>
         ) : null}
       </header>
-      <div className="readout panel mono" aria-live="off">
+      <div className="readout num" aria-live="off">
         {focusRec ? (
           <>
             <span>line {focusRec.i + 1}</span>
@@ -96,7 +96,7 @@ export function TimingView() {
             ))}
           </>
         ) : (
-          <span className="muted">{records.length ? `${records.length} lines. Point at a chart to read one.` : "No lines logged yet."}</span>
+          <span className="muted">{records.length ? `${records.length} lines` : "No lines logged yet"}</span>
         )}
       </div>
       <div ref={ref} className="timing-list">
@@ -113,23 +113,23 @@ export function TimingView() {
                 <dl className="tstats">
                   <div>
                     <dt>last</dt>
-                    <dd className="mono">{simApi ? "sim" : fmtMs(st.last)}</dd>
+                    <dd className="num">{simApi ? "sim" : fmtMs(st.last)}</dd>
                   </div>
                   <div>
                     <dt>mean</dt>
-                    <dd className="mono">{simApi ? "sim" : fmtMs(st.mean)}</dd>
+                    <dd className="num">{simApi ? "sim" : fmtMs(st.mean)}</dd>
                   </div>
                   <div>
                     <dt>p95</dt>
-                    <dd className="mono">{simApi ? "sim" : fmtMs(st.p95)}</dd>
+                    <dd className="num">{simApi ? "sim" : fmtMs(st.p95)}</dd>
                   </div>
                   <div>
                     <dt>max</dt>
-                    <dd className="mono">{simApi ? "sim" : fmtMs(maxOf(values[s.key]))}</dd>
+                    <dd className="num">{simApi ? "sim" : fmtMs(maxOf(values[s.key]))}</dd>
                   </div>
                   <div>
                     <dt>lines</dt>
-                    <dd className="mono">{st.n}</dd>
+                    <dd className="num">{st.n}</dd>
                   </div>
                 </dl>
               </header>

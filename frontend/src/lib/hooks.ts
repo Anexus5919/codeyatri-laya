@@ -22,7 +22,7 @@ export function useRecords(): StepRecord[] {
 export function decisionContext(frame: Frame, total: number, status: string | null | undefined): string {
   const d = frame.decision;
   if (!d) return "";
-  if (frame.mode === "history") return `Viewing history: line ${(d.i ?? 0) + 1} of ${total}`;
-  if (d.origin === "pending") return d.result === "awaiting" ? "Deciding now: written to the log before the move is sent" : "Logged decision that was never sent before the session ended";
-  return status === "live" ? "Latest logged move, following live" : "Last logged move of this session";
+  if (frame.mode === "history") return `line ${(d.i ?? 0) + 1} of ${total}`;
+  if (d.origin === "pending") return d.result === "awaiting" ? "deciding now" : "";
+  return status === "live" ? "latest" : "";
 }

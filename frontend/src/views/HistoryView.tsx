@@ -13,7 +13,7 @@ import type { StepDetail, StepRecord } from "../lib/types";
 function ResultCell({ r }: { r: StepRecord }) {
   if (r.result === "rejected")
     return (
-      <span className="cell-result c-reject">
+      <span className="cell-result c-rejected">
         <RejectedGlyph size={13} /> rejected
       </span>
     );
@@ -24,8 +24,9 @@ function ResultCell({ r }: { r: StepRecord }) {
       </span>
     );
   return (
-    <span className="cell-result c-ok">
-      <AppliedGlyph size={13} /> applied
+    <span className="cell-result c-ok" title="applied">
+      <AppliedGlyph size={13} />
+      <span className="sr-only">applied</span>
     </span>
   );
 }
@@ -34,21 +35,21 @@ function Row({ r, sim }: { r: StepRecord; sim: boolean }) {
   const p = chosenPYes(r);
   return (
     <div className="hrow">
-      <span className="h-line mono">{r.i + 1}</span>
-      <span className="h-step mono">{r.step}</span>
+      <span className="h-line num">{r.i + 1}</span>
+      <span className="h-step num">{r.step}</span>
       <ResultCell r={r} />
       <span className="h-move">
         <DirGlyph dir={r.action} size={14} /> {DIR_LABEL[r.action] ?? r.action}
       </span>
-      <span className="h-p mono" title="Laya's yes-probability for the sent move">
+      <span className="h-p num" title="Laya's yes-probability for the sent move">
         {fmtP(p)}
       </span>
-      <span className="h-share mono" title="Share across asked moves">
+      <span className="h-share num" title="Share across asked moves">
         {fmtPct(r.probabilities?.[r.action])}
       </span>
-      <span className="h-ms mono">{fmtMs(r.timing?.decide_ms)}</span>
-      <span className="h-ms mono">{sim ? "sim" : fmtMs(r.timing?.api_ms)}</span>
-      <span className="h-ms mono">{fmtMs(r.timing?.turn_ms)}</span>
+      <span className="h-ms num">{fmtMs(r.timing?.decide_ms)}</span>
+      <span className="h-ms num">{sim ? "sim" : fmtMs(r.timing?.api_ms)}</span>
+      <span className="h-ms num">{fmtMs(r.timing?.turn_ms)}</span>
     </div>
   );
 }
@@ -80,8 +81,8 @@ function LoggedLine({ sessionId, i }: { sessionId: string | null; i: number | nu
         <ol className="q-list">
           {Object.entries(byDir).map(([dir, q]) => (
             <li key={dir}>
-              <span className="q-dir mono">{dir}</span>
-              <blockquote className="quote mono-quote">{q}</blockquote>
+              <span className="q-dir">{dir}</span>
+              <p className="raw">{q}</p>
             </li>
           ))}
         </ol>
@@ -89,8 +90,8 @@ function LoggedLine({ sessionId, i }: { sessionId: string | null; i: number | nu
         <ol className="q-list">
           {qs.map((q, k) => (
             <li key={k}>
-              <span className="q-dir mono">#{k + 1}</span>
-              <blockquote className="quote mono-quote">{q}</blockquote>
+              <span className="q-dir">Question {k + 1}</span>
+              <p className="raw">{q}</p>
             </li>
           ))}
         </ol>
@@ -98,7 +99,7 @@ function LoggedLine({ sessionId, i }: { sessionId: string | null; i: number | nu
       {d.data.event?.state_text ? (
         <>
           <h3>Board description sent with them</h3>
-          <blockquote className="quote mono-quote">{d.data.event.state_text}</blockquote>
+          <p className="raw">{d.data.event.state_text}</p>
         </>
       ) : null}
       <dl className="hash-row mono">
@@ -139,34 +140,28 @@ export function HistoryView() {
       <header className="view-head">
         <div>
           <h1>Decision history</h1>
-          <p className="sub">
-            Every logged line, applied, rejected and fallback, in log order. Select a line to inspect it everywhere; arrow keys move, Escape returns to live.
-          </p>
+          <p className="sub">Every logged line in log order. Select one to inspect it; arrow keys move, Escape returns to live.</p>
         </div>
-        <div className="head-actions">
-          {sel === null ? (
+        {sel === null ? (
+          <div className="head-actions">
             <button type="button" className="btn" disabled={!records.length} onClick={() => enterHistory(records.length - 1)}>
               Inspect the latest line
             </button>
-          ) : (
-            <button type="button" className="btn-live" onClick={backToLive}>
-              Back to live
-            </button>
-          )}
-        </div>
+          </div>
+        ) : null}
       </header>
       <div className="history-grid">
         <section className="panel hist-list" aria-label="Logged lines">
           <div className="hrow hrow-head" aria-hidden="true">
-            <span className="h-line">line</span>
-            <span className="h-step">step</span>
-            <span className="cell-result">result</span>
-            <span className="h-move">move</span>
+            <span className="h-line">Line</span>
+            <span className="h-step">Step</span>
+            <span className="cell-result">Result</span>
+            <span className="h-move">Move</span>
             <span className="h-p">P(yes)</span>
-            <span className="h-share">share</span>
-            <span className="h-ms">decide</span>
-            <span className="h-ms">api</span>
-            <span className="h-ms">turn</span>
+            <span className="h-share">Share</span>
+            <span className="h-ms">Decide</span>
+            <span className="h-ms">API</span>
+            <span className="h-ms">Turn</span>
           </div>
           {records.length ? (
             <VirtualList
@@ -204,9 +199,11 @@ export function HistoryView() {
             <div className="hist-board-svg">
               <BoardSvg game={game} frame={frame.board} onHover={onHover} />
             </div>
-            <p className="stage-hover-inline mono">{hover ?? "Point at or tap a cell for its coordinates"}</p>
+            {hover ? <p className="stage-hover-inline">{hover}</p> : null}
           </section>
-          <DecisionPanel decision={frame.decision} sessionId={sessionId} simulator={sim} context={decisionContext(frame, records.length, status)} compact />
+          <section className="panel">
+            <DecisionPanel decision={frame.decision} sessionId={sessionId} simulator={sim} context={decisionContext(frame, records.length, status)} />
+          </section>
           <section className="panel">
             {focus !== null ? <LoggedLine sessionId={sessionId} i={focus} /> : <p className="muted">The exact questions appear once a line is logged.</p>}
           </section>

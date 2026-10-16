@@ -11,7 +11,7 @@ function Field({ k, v, mono = true }: { k: string; v: unknown; mono?: boolean })
   return (
     <div className="field">
       <dt>{k}</dt>
-      <dd className={mono ? "mono" : undefined}>{text}</dd>
+      <dd className={mono ? "num" : undefined}>{text}</dd>
     </div>
   );
 }
@@ -66,7 +66,7 @@ export function AuditView() {
           {verify && verify.problems.length ? (
             <ol className="problems">
               {verify.problems.slice(0, 40).map((p, k) => (
-                <li key={k} className="mono">
+                <li key={k} className="raw">
                   {p}
                 </li>
               ))}
@@ -145,7 +145,7 @@ export function AuditView() {
               {tail.map((r) => (
                 <li key={r.i}>
                   <button type="button" className="link-node" onClick={() => enterHistory(r.i)} title="Inspect this line">
-                    <span className="mono small muted">line {fmtInt(r.i + 1)}</span>
+                    <span className="small muted">Line {fmtInt(r.i + 1)}</span>
                     <span className="mono">{r.hash}</span>
                   </button>
                 </li>

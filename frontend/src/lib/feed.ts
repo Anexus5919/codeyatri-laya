@@ -1,8 +1,11 @@
 // Polling engine: keeps the session list, the selected session's step records and its verification current.
 // Lives outside React so a new line updates only the components that read the changed slice.
+// Sessions are addressed by their key: the plain session id for the main runs folder, a folder-qualified
+// id for simulator folders (simulator seeds repeat session ids).
 
 import { api, clearStepCache } from "./api";
-import { store, type Feed } from "./store";
+import { store, type DataSource, type Feed } from "./store";
+import type { SessionItem } from "./types";
 
 const SESSIONS_MS = 2000;
 const HISTORY_MS = { live: 500, idle: 1500, interrupted: 5000, finished: 5000 } as const;
@@ -25,12 +28,33 @@ function emptyFeed(sessionId: string): Feed {
   return { sessionId, records: [], total: 0, pending: null, meta: null, loaded: false, complete: false, error: null };
 }
 
+export const keyOf = (s: SessionItem): string => s.key ?? s.session_id;
+export const sourceOf = (s: SessionItem): DataSource => (s.source === "simulator" ? "simulator" : "arena");
+
+// Newest first already; the first match is the newest session for that source and game
+export function newestFor(sessions: SessionItem[], source: DataSource, game: string | null): SessionItem | null {
+  return sessions.find((s) => sourceOf(s) === source && (game === null || (s.game ?? "unknown") === game)) ?? null;
+}
+
+function clearSession(): void {
+  token += 1;
+  historyAbort?.abort();
+  window.clearTimeout(historyTimer);
+  window.clearTimeout(verifyTimer);
+  store.set({ sessionId: null, feed: null, verify: null, verifyFor: null, verifyAt: null, verifyError: null, selection: { mode: "live" }, phase: "before" });
+}
+
 export function selectSession(id: string, opts: { manual?: boolean } = {}): void {
   const s = store.get();
+  const row = s.sessions.find((x) => keyOf(x) === id);
   const patch: Parameters<typeof store.set>[0] = { newSessionNotice: null };
+  if (row) {
+    patch.game = row.game ?? "unknown";
+    patch.source = sourceOf(row);
+  }
   if (opts.manual) {
-    const newest = s.sessions[0]?.session_id;
-    patch.followNewest = id === newest ? s.followNewest : false;
+    const newest = row ? newestFor(s.sessions, sourceOf(row), null) : null;
+    patch.followNewest = newest && keyOf(newest) === id ? s.followNewest : false;
   }
   if (s.sessionId === id) {
     store.set(patch);
@@ -56,22 +80,50 @@ export function selectSession(id: string, opts: { manual?: boolean } = {}): void
   verifyTimer = window.setTimeout(() => void runVerify(token), 300);
 }
 
+// Header game switcher: that game's newest session in the current source, or an empty state
+export function chooseGame(game: string): void {
+  const s = store.get();
+  const row = newestFor(s.sessions, s.source, game);
+  store.set({ game, newSessionNotice: null });
+  if (row) selectSession(keyOf(row));
+  else clearSession();
+}
+
+export function chooseSource(source: DataSource): void {
+  const s = store.get();
+  const row = newestFor(s.sessions, source, s.game);
+  store.set({ source, newSessionNotice: null });
+  if (row) selectSession(keyOf(row));
+  else clearSession();
+}
+
 async function pollSessions(): Promise<void> {
   window.clearTimeout(sessionsTimer);
   if (!hidden()) {
     try {
       const body = await api.sessions();
       const s = store.get();
-      store.set({ sessions: body.sessions, root: body.root, sessionsLoaded: true, sessionsError: null, online: true });
-      // "Newest" means a session that appeared since the last poll. Sorting by write time alone would
-      // bounce between two sessions that are both being written.
-      const ids = new Set(body.sessions.map((x) => x.session_id));
-      const fresh = known ? body.sessions.filter((x) => !known!.has(x.session_id)) : [];
+      store.set({ sessions: body.sessions, root: body.root, simRoots: body.sim_roots ?? [], sessionsLoaded: true, sessionsError: null, online: true });
+      // "Newest" means a session that appeared since the last poll in the source being viewed. Sorting by
+      // write time alone would bounce between two sessions that are both being written.
+      const ids = new Set(body.sessions.map(keyOf));
+      const fresh = known ? body.sessions.filter((x) => !known!.has(keyOf(x)) && sourceOf(x) === s.source) : [];
+      const first = known === null;
       known = ids;
-      if (!s.sessionId) {
-        if (body.newest) selectSession(body.newest);
+      const current = s.sessionId ? body.sessions.find((x) => keyOf(x) === s.sessionId) : undefined;
+      if (current && (s.game !== (current.game ?? "unknown") || s.source !== sourceOf(current))) {
+        // A session opened from a link before the list arrived: the header follows it
+        store.set({ game: current.game ?? "unknown", source: sourceOf(current) });
+      }
+      if (first && !s.sessionId) {
+        const row = newestFor(body.sessions, s.source, s.game);
+        if (row) selectSession(keyOf(row));
+        else if (s.game === null) {
+          // Nothing for this source yet: still land on a game so the empty state can name it
+          store.set({ game: body.sessions[0]?.game ?? "snake" });
+        }
       } else if (s.followNewest && fresh.length) {
-        const target = fresh[0].session_id;
+        const target = keyOf(fresh[0]);
         // Never pull someone out of the history they are reading; offer the switch instead
         if (target !== s.sessionId) {
           if (s.selection.mode === "history") store.set({ newSessionNotice: target });
@@ -100,7 +152,7 @@ async function pollHistory(t: number): Promise<void> {
     const body = await api.history(feed.sessionId, feed.records.length, PAGE, historyAbort.signal);
     if (t !== token) return;
     const cur = store.get().feed;
-    if (!cur || cur.sessionId !== body.session_id) return;
+    if (!cur || cur.sessionId !== (body.key ?? body.session_id)) return;
     const base = body.reset ? [] : cur.records;
     const added = body.records.filter((r) => r.i >= base.length);
     const records = added.length ? base.concat(added) : base;
