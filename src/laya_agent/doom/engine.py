@@ -158,11 +158,20 @@ class DoomEnv:
             self.game.close()
 
 
+def demo_path(path: str | os.PathLike) -> str:
+    """The engine misreads long absolute demo paths, so hand it the shortest form: relative when possible."""
+    try:
+        rel = os.path.relpath(path)
+    except ValueError:  # another drive
+        return str(path)
+    return rel if len(rel) < len(str(path)) else str(path)
+
+
 def replay(scenario: str, record_path: str, skill: int = 3, seed: int = 0) -> dict:
     """Plays a recorded demo back in the engine and returns how the episode ended, for proof checks."""
     env = DoomEnv(scenario, skill=skill, seed=seed)
     g = env.game
-    g.replay_episode(record_path)
+    g.replay_episode(demo_path(record_path))
 
     def sample() -> dict:
         return {"tic": int(g.get_episode_time()), "kills": int(g.get_game_variable(GV.KILLCOUNT)),

@@ -204,3 +204,30 @@ def test_engine_episode_replays_to_the_same_result(tmp_path):
     again = replay("defend_the_center", str(lmp), seed=3)
     assert (again["kills"], again["health"], again["dead"]) == (out["kills"], out["health"], out["dead"])
     assert abs(again["tic"] - out["tic"]) <= 1
+
+
+def test_screens_are_rebuilt_from_the_recording(tmp_path, monkeypatch):
+    from laya_agent.doom.decider import DoomDecider
+    from laya_agent.doom.engine import DoomEnv
+    from laya_agent.doom.frames import rebuild
+    from laya_agent.doom.runner import play_episode
+
+    class R:
+        def register(self, name, path, description=""):
+            return name
+
+        def load(self, name):
+            return type("A", (), {"device": "cpu"})()
+
+        def predict(self, state, qs, model=None):
+            return {"answers": {k: {"noul": 0.9 if k == "q_shoot" else 0.2} for k in qs}}
+
+    monkeypatch.chdir(tmp_path)
+    env = DoomEnv("defend_the_center", seed=4, timeout_tics=35 * 6)
+    final = play_episode(env, DoomDecider(router=R()), "runs", settings={"scenario": "defend_the_center", "seed": 4,
+                                                                          "skill": 3, "resolution": "320x240"},
+                         quiet=True)
+    spec = tmp_path / "runs" / "doom" / f"{final['session_id']}.jsonl"
+    out = rebuild(spec)
+    assert out["written"] == final["steps"] and out["kept"] == 0
+    assert len(list((spec.parent / f"{final['session_id']}.frames").glob("*.jpg"))) == final["steps"]
