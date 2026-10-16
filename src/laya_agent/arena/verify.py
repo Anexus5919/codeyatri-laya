@@ -65,6 +65,7 @@ def main(argv: list[str] | None = None) -> int:
             "steps match": server.get("steps") == local.get("applied"),
             "final board matches last line": server.get("state") == applied_last.get("state_after"),
             "same game": server.get("game") == local.get("game"),
+            "session finished (rule 5.1)": bool(server.get("done")),
         }
         print(f"  arena server      steps {server.get('steps')}, score {server.get('score')}, "
               f"done {server.get('done')}, won {server.get('won')}")
