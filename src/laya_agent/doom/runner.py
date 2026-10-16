@@ -91,8 +91,9 @@ def play_episode(env: DoomEnv, decider: DoomDecider, runs_dir: str | Path, agent
         events.write(json.dumps({"session_id": sid, "ts": utc_ts(), **rec}, ensure_ascii=False) + "\n")
         events.flush()
 
-    event({"type": "session_start", "game": "doom", "agent_name": agent_name, "settings": settings or {},
-           "model_source": decider.model_source})
+    event({"type": "session_start", "game": "doom", "agent_name": agent_name, "env": "DOOM_ENGINE",
+           "settings": settings or {}, "model": getattr(decider, "model", None), "model_source": decider.model_source,
+           "device": (getattr(decider, "info", None) or {}).get("device"), "load": getattr(decider, "info", None)})
     env.start(str(lmp))
     obs = env.observe()
     step = 0

@@ -54,6 +54,7 @@ class DoomDecider:
             model = router.register("custom", model, description="configured checkpoint")
         self.model = model
         self.agent = None
+        self.info: dict = {}
 
     def load(self) -> dict:
         try:
@@ -67,6 +68,7 @@ class DoomDecider:
         info = {"laya_version": version, "model": self.model, "model_source": self.model_source,
                 "device": str(getattr(self.agent, "device", "")), "load_s": round(time.perf_counter() - t0, 2)}
         self.warm_up()
+        self.info = info
         return info
 
     def warm_up(self) -> None:
