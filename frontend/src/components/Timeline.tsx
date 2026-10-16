@@ -2,7 +2,7 @@
 // triangle = fallback, cross = rejected), height = Laya's yes-probability for the move that was sent.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as RPointerEvent } from "react";
-import { DIR_LABEL, fmtP } from "../lib/derive";
+import { DIR_LABEL, fmtP, isDoomAction } from "../lib/derive";
 import { backToLive, enterHistory, stepBy, useStore } from "../lib/store";
 import type { StepRecord } from "../lib/types";
 import { IconChevron, IconLive } from "./Glyphs";
@@ -45,6 +45,7 @@ export function Timeline() {
   const selection = useStore((s) => s.selection);
   const { ref, w } = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
+  const sessionId = useStore((s) => s.sessionId);
   const dragging = useRef(false);
   const n = records.length;
   const span = Math.max(1, w - PAD * 2);
@@ -186,7 +187,15 @@ export function Timeline() {
           ) : null}
         </svg>
         {hovered ? (
-          <div className="rb-tip mono" style={{ left: Math.min(Math.max(xOf(hovered.i), 90), w - 90) }}>
+          <div className="rb-tip mono" style={{ left: Math.min(Math.max(xOf(hovered.i), 110), w - 110) }}>
+            {isDoomAction(hovered.action) && sessionId ? (
+              <img
+                className="rb-frame"
+                src={`api/frame?id=${encodeURIComponent(sessionId)}&step=${hovered.step}`}
+                alt=""
+                onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
+              />
+            ) : null}
             {describeRecord(hovered)}
           </div>
         ) : null}

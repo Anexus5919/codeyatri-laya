@@ -5,7 +5,7 @@ import { AppliedGlyph, DirGlyph, FallbackGlyph, RejectedGlyph } from "../compone
 import { chosenPYes } from "../components/Timeline";
 import { VirtualList } from "../components/VirtualList";
 import { loadStep } from "../lib/api";
-import { DIR_LABEL, fmtMs, fmtP, fmtPct } from "../lib/derive";
+import { DIR_LABEL, fmtMs, fmtP, fmtPct, isDoomAction } from "../lib/derive";
 import { decisionContext, useArenaFrame, useRecords } from "../lib/hooks";
 import { backToLive, enterHistory, store, useStore } from "../lib/store";
 import type { StepDetail, StepRecord } from "../lib/types";
@@ -74,8 +74,19 @@ function LoggedLine({ sessionId, i }: { sessionId: string | null; i: number | nu
   const line = d.data.line;
   const qs = line.decision?.questions ?? [];
   const byDir = d.data.questions_by_dir;
+  const doomStep = isDoomAction(line.action) ? (line.step as number) : null;
   return (
     <section className="logged-line" aria-label="Logged line">
+      {doomStep !== null && sessionId ? (
+        <figure className="logged-frame">
+          <img
+            src={`api/frame?id=${encodeURIComponent(sessionId)}&step=${doomStep}`}
+            alt={`Game screen Laya saw at step ${doomStep}`}
+            onError={(e) => ((e.currentTarget.parentElement as HTMLElement).style.display = "none")}
+          />
+          <figcaption className="small muted">The screen Laya's decision at step {doomStep} was made on</figcaption>
+        </figure>
+      ) : null}
       <h3>Exact questions in the submission log</h3>
       {byDir ? (
         <ol className="q-list">

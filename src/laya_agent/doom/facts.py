@@ -42,6 +42,11 @@ MONSTERS = {"ZombieMan": "Zombieman", "Zombieman": "Zombieman", "ShotgunGuy": "s
             "Revenant": "Revenant", "Fatso": "Mancubus", "Archvile": "Arch-vile", "Cyberdemon": "Cyberdemon",
             "SpiderMastermind": "Spider Mastermind", "WolfensteinSS": "SS guard",
             "MarineChainsawVzd": "chainsaw marine"}
+# Doom's collision radius per monster: a hitscan shot hits when it passes within this distance of the centre
+RADIUS = {"ZombieMan": 20, "Zombieman": 20, "ShotgunGuy": 20, "ChaingunGuy": 20, "DoomImp": 20, "Demon": 30,
+          "Spectre": 30, "LostSoul": 16, "Cacodemon": 31, "HellKnight": 24, "BaronOfHell": 24, "Arachnotron": 64,
+          "PainElemental": 31, "Revenant": 20, "Fatso": 48, "Archvile": 20, "Cyberdemon": 40,
+          "SpiderMastermind": 128, "WolfensteinSS": 20, "MarineChainsawVzd": 16}
 ITEM_CATEGORIES = ("Health", "Armor", "Ammo", "Weapon", "Key", "Powerup")
 MISSILE_IGNORE = ("BulletPuff",)
 SIDE_ANGLE = {"forward": 0.0, "backward": 180.0, "strafe_left": 90.0, "strafe_right": -90.0}
@@ -72,11 +77,12 @@ class Enemy:
     bearing: float
     visible: bool
     in_crosshair: bool
+    radius: float = 20.0
 
     @property
     def half(self) -> float:
-        """Half the enemy's width as an angle: within this many degrees the shot hits."""
-        return max(2.0, math.degrees(math.atan2(18.0, max(self.dist, 1.0))))
+        """Half the enemy's body as an angle: within this many degrees of the crosshair the shot hits."""
+        return max(2.0, math.degrees(math.atan2(self.radius, max(self.dist, 1.0))))
 
 
 @dataclass
@@ -190,10 +196,14 @@ class Perceiver:
             d = math.hypot(o.position_x - x, o.position_y - y)
             b = bearing(x, y, ang, o.position_x, o.position_y)
             lb = shown.get(o.id)
+            r = float(RADIUS.get(o.name, 20))
             if lb is not None:
-                enemies.append(Enemy(o.id, pretty(o.name), d, b, True, lb.x <= cx <= lb.x + lb.width))
+                # On screen and covering the centre column, and close enough in angle for the body to be hit (a
+                # monster right in front fills the screen even when the shot would pass beside it)
+                on_body = abs(b) <= math.degrees(math.atan2(r, max(d, 1.0))) + 1.5
+                enemies.append(Enemy(o.id, pretty(o.name), d, b, True, lb.x <= cx <= lb.x + lb.width and on_body, r))
             elif d <= NEAR_UNSEEN and geo.cast(x, y, ang + b, d, z).dist >= d - 24.0:
-                enemies.append(Enemy(o.id, pretty(o.name), d, b, False, False))
+                enemies.append(Enemy(o.id, pretty(o.name), d, b, False, False, r))
 
         items = []
         for lb in obs.labels:

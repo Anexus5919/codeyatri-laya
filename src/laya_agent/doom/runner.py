@@ -85,12 +85,21 @@ class FrameSaver:
             if item is None:
                 return
             step, screen = item
-            img = self.Image.fromarray(screen)
-            tmp = self.folder / "latest.tmp.jpg"
-            img.save(tmp, quality=75)
-            os.replace(tmp, self.folder / "latest.jpg")
-            if step % self.every == 0:
-                img.save(self.folder / f"{step:05d}.jpg", quality=70)
+            try:
+                img = self.Image.fromarray(screen)
+                if step % self.every == 0:
+                    img.save(self.folder / f"{step:05d}.jpg", quality=70)
+                tmp = self.folder / "latest.tmp.jpg"
+                img.save(tmp, quality=75)
+                # On Windows the replace fails while the dashboard is reading latest.jpg; try again shortly
+                for attempt in range(5):
+                    try:
+                        os.replace(tmp, self.folder / "latest.jpg")
+                        break
+                    except PermissionError:
+                        time.sleep(0.02 * (attempt + 1))
+            except Exception:
+                continue  # one lost capture must never stop the rest
 
     def close(self) -> None:
         self.q.put(None)

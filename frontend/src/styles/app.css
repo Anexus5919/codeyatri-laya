@@ -2011,3 +2011,32 @@ code {
   flex-wrap: wrap;
   margin-top: var(--sp-3);
 }
+
+/* Doom: the step's game screen in the timeline tooltip and in the history detail */
+.rb-frame {
+  display: block;
+  width: 208px;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  background: #000;
+  border-radius: var(--r-sm);
+  margin-bottom: 4px;
+  image-rendering: pixelated;
+}
+.logged-frame {
+  margin: 0 0 var(--sp-4);
+}
+.logged-frame img {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  background: #000;
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-line);
+  image-rendering: pixelated;
+}
+.logged-frame figcaption {
+  margin-top: 6px;
+}
