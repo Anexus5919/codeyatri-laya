@@ -1,0 +1,223 @@
+{
+ "summary": {
+  "game": "2048",
+  "template": "noul_nodir",
+  "games": 16,
+  "points_mean": 455.5,
+  "points_median": 436.0,
+  "points_min": 288,
+  "points_max": 588,
+  "fallback_share_max": 0.0,
+  "all_logs_verify": true,
+  "best_tiles": {
+   "256": 4,
+   "512": 6,
+   "1024": 6
+  },
+  "reach_512_rate": 0.75
+ },
+ "rows": [
+  {
+   "seed": 300,
+   "points": 583,
+   "won": false,
+   "steps": 687,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 105.5,
+   "best_tile": 1024,
+   "score": 11780
+  },
+  {
+   "seed": 301,
+   "points": 289,
+   "won": false,
+   "steps": 282,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 27.6,
+   "best_tile": 256,
+   "score": 3380
+  },
+  {
+   "seed": 302,
+   "points": 288,
+   "won": false,
+   "steps": 239,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 23.2,
+   "best_tile": 256,
+   "score": 2780
+  },
+  {
+   "seed": 303,
+   "points": 434,
+   "won": false,
+   "steps": 410,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 38.9,
+   "best_tile": 512,
+   "score": 5644
+  },
+  {
+   "seed": 304,
+   "points": 435,
+   "won": false,
+   "steps": 421,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 43.7,
+   "best_tile": 512,
+   "score": 6052
+  },
+  {
+   "seed": 305,
+   "points": 289,
+   "won": false,
+   "steps": 319,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 31.3,
+   "best_tile": 256,
+   "score": 3900
+  },
+  {
+   "seed": 306,
+   "points": 436,
+   "won": false,
+   "steps": 508,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 50.1,
+   "best_tile": 512,
+   "score": 7304
+  },
+  {
+   "seed": 307,
+   "points": 587,
+   "won": false,
+   "steps": 919,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 93.8,
+   "best_tile": 1024,
+   "score": 15712
+  },
+  {
+   "seed": 308,
+   "points": 436,
+   "won": false,
+   "steps": 539,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 69.3,
+   "best_tile": 512,
+   "score": 7604
+  },
+  {
+   "seed": 309,
+   "points": 435,
+   "won": false,
+   "steps": 450,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 62.4,
+   "best_tile": 512,
+   "score": 6504
+  },
+  {
+   "seed": 310,
+   "points": 588,
+   "won": false,
+   "steps": 1019,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 117.2,
+   "best_tile": 1024,
+   "score": 16980
+  },
+  {
+   "seed": 311,
+   "points": 588,
+   "won": false,
+   "steps": 965,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 96.3,
+   "best_tile": 1024,
+   "score": 16488
+  },
+  {
+   "seed": 312,
+   "points": 292,
+   "won": false,
+   "steps": 516,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 51.0,
+   "best_tile": 256,
+   "score": 6808
+  },
+  {
+   "seed": 313,
+   "points": 584,
+   "won": false,
+   "steps": 725,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 78.8,
+   "best_tile": 1024,
+   "score": 12132
+  },
+  {
+   "seed": 314,
+   "points": 436,
+   "won": false,
+   "steps": 508,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 49.8,
+   "best_tile": 512,
+   "score": 7320
+  },
+  {
+   "seed": 315,
+   "points": 588,
+   "won": false,
+   "steps": 948,
+   "fallbacks": 0,
+   "fallback_share": 0.0,
+   "verified_ok": true,
+   "seconds": 93.7,
+   "best_tile": 1024,
+   "score": 16152
+  }
+ ],
+ "load": {
+  "laya_version": "0.4.6",
+  "model": "custom",
+  "device": "cuda",
+  "load_s": 17.5,
+  "revision": null,
+  "template": "noul_nodir",
+  "offer": "legal",
+  "style": "v3"
+ }
+}

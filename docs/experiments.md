@@ -192,3 +192,16 @@ Chance (uniform over legal moves): 0.526.
 - Interpretation: tied on the 512 gate; 24 games cannot separate them. The full checkpoint has the higher ceiling (three 2048 tiles, about 720 points each), which is what the scoring rule rewards (median of the best three verified runs; failed runs do not count against it), and it fixes the decision that lost the first real game.
 - Decision: the full checkpoint plays the next real 2048 runs.
 - Evidence: `docs/evidence/eval_2048_kaggle_full_seeds100.json`, `docs/evidence/eval_2048_kaggle_full_seeds300.json`.
+
+## E13: Round 2 on Kaggle (boards the fine-tuned Laya reached) vs the full checkpoint (simulator, same 24 seeds)
+
+- 2026-10-16. Kaggle `codeyatri-laya-2048-finetune-r2`: round 1 data plus boards that the fine-tuned Laya itself reached in simulator games, same rule-based labels. Held-out agreement **0.947** (full checkpoint 0.955), ECE 0.027. Frozen copy: `data/ft2048/ckpt_kaggle_r2_frozen`.
+
+| checkpoint | seeds 100 to 107 at 512+ | seeds 300 to 315 at 512+ | total at 512+ | 1024+ | 2048 | mean points | best three |
+|---|---|---|---|---|---|---|---|
+| full (E12) | 8 of 8 | 11 of 16 | 19 of 24 | 11 | 3 | 494 | 740, 743, 749 |
+| round 2 | 7 of 8 | 12 of 16 | 19 of 24 | 9 | 0 | 461 | 588, 588, 588 |
+
+- Interpretation: the same 512 rate, a lower ceiling. Training on its own boards did not teach recovery; it made the play more uniform and removed the 2048 games. The scoring rule (median of the best three verified runs) favours the full checkpoint.
+- Decision: the full checkpoint stays for real 2048 runs; round 2 is kept on disk only.
+- Evidence: `docs/evidence/eval_2048_kaggle_r2_seeds100.json`, `docs/evidence/eval_2048_kaggle_r2_seeds300.json`.
