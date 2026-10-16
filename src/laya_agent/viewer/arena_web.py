@@ -5,15 +5,21 @@ Reads the files the arena runner writes under runs/<game>/:
   <session_id>.events.jsonl  live events: session_start, decision, session_end (optional)
   <session_id>.final.json    the game's final API response (optional)
 
-Usage: python -m laya_agent.viewer.arena_web [runs_folder] [--port 8770] [--host 127.0.0.1]
+Usage: python -m laya_agent.viewer.arena_web [runs_folder] [--port 8770] [--host 127.0.0.1] [--sim-roots "runs_sim*"]
+
+--sim-roots adds read-only simulator folders (a glob, relative to the working directory), scanned two
+levels deep, for example runs_sim_r2/noul_nodir/2048. Their sessions get a unique key such as
+"runs_sim_r2/noul_nodir/2048/<session_id>", because simulator seeds repeat session ids across folders.
 
 Pages: / is the built dashboard in app_dist/ (frontend/ in the repo builds it), /classic is the
 original single-file viewer. Without app_dist/ the classic viewer is served at / as well.
+/api/leaderboard?game=snake proxies the public arena leaderboard (cached 60 s, last good copy when offline).
 """
 
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import math
 import os
@@ -21,7 +27,9 @@ import re
 import tempfile
 import threading
 import time
-from collections import deque
+import urllib.error
+import urllib.request
+from collections import OrderedDict, deque
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -69,6 +77,16 @@ INTERRUPTED_AFTER_S = 120.0
 SIM_ENVS = ("LOCAL_SIM", "LOCAL_FIXTURE")
 SIM_AGENTS = ("SIM-EVAL",)
 HISTORY_PAGE = 400
+MAX_TAILS = 48
+MAX_RECORD_SETS = 12
+
+# Public arena leaderboard, fetched server side because the browser cannot call it directly
+LEADERBOARD_URL = "https://topgameai.com/api/arena/leaderboard/{game}"
+LEADERBOARD_TTL_S = 60.0
+LEADERBOARD_TIMEOUT_S = 10.0
+LEADERBOARD_UA = "CodeYatri-laya-agent/1.0"
+LEADERBOARD_RETRY_S = 15.0  # after a failed fetch, wait this long before trying the network again
+SAFE_GAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,31}$")
 
 SNAKE_POINTS_PER_FOOD = 60
 SNAKE_WIN_BONUS = 100
@@ -121,6 +139,15 @@ def env_kind(start: dict | None) -> str:
     if env == "HOSTED":
         return "hosted"
     return "unknown"
+
+
+def session_source(kind: str, origin: str) -> str:
+    # The env label wins; a session without one is tagged by the folder it was found in
+    if kind == "hosted":
+        return "arena"
+    if kind == "simulator":
+        return "simulator"
+    return "arena" if origin == "runs" else "simulator"
 
 
 def pair_decisions(lines: list[dict], events: list[dict]) -> tuple[list[dict | None], dict | None]:
@@ -213,6 +240,60 @@ def timing_stats(lines: list[dict]) -> dict:
     return out
 
 
+def fetch_leaderboard_json(game: str) -> Any:
+    req = urllib.request.Request(LEADERBOARD_URL.format(game=game),
+                                 headers={"User-Agent": LEADERBOARD_UA, "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=LEADERBOARD_TIMEOUT_S) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+class Leaderboard:
+    """Caches the public leaderboard per game for LEADERBOARD_TTL_S.
+
+    On a failed fetch it serves the last good copy marked stale with its fetch time, and with no copy it
+    returns an empty board and the error. Rows are passed through exactly as the arena sent them.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._game_locks: dict[str, threading.Lock] = {}
+        self._good: dict[str, dict] = {}
+        self._failed: dict[str, tuple[float, str]] = {}
+
+    def get(self, game: str) -> dict:
+        with self._lock:
+            game_lock = self._game_locks.setdefault(game, threading.Lock())
+        with game_lock:  # one fetch per game at a time
+            good = self._good.get(game)
+            if good and time.time() - good["fetched_at"] < LEADERBOARD_TTL_S:
+                return {**good, "stale": False, "error": None}
+            failed = self._failed.get(game)
+            if failed and time.time() - failed[0] < LEADERBOARD_RETRY_S:
+                return self._fallback(game, good, failed[1])
+            try:
+                data = fetch_leaderboard_json(game)
+                rows = data.get("leaderboard") if isinstance(data, dict) else None
+                if not isinstance(rows, list):
+                    raise ValueError("the response has no leaderboard list")
+                good = {"game": data.get("game", game), "leaderboard": [r for r in rows if isinstance(r, dict)],
+                        "fetched_at": time.time(), "url": LEADERBOARD_URL.format(game=game)}
+                self._good[game] = good
+                self._failed.pop(game, None)
+                return {**good, "stale": False, "error": None}
+            except (OSError, ValueError, urllib.error.URLError) as e:
+                # json.JSONDecodeError is a ValueError, HTTPError and timeouts are OSErrors
+                error = f"{type(e).__name__}: {e}"
+                self._failed[game] = (time.time(), error)
+                return self._fallback(game, good, error)
+
+    @staticmethod
+    def _fallback(game: str, good: dict | None, error: str) -> dict:
+        if good:
+            return {**good, "stale": True, "error": error}
+        return {"game": game, "leaderboard": [], "fetched_at": None, "url": LEADERBOARD_URL.format(game=game),
+                "stale": True, "error": error}
+
+
 class JsonlTail:
     """Parses a JSONL file incrementally; a half-written last line waits for the next read."""
 
@@ -258,6 +339,8 @@ class Session:
     session_id: str
     folder: Path
     game: str | None
+    key: str = ""         # unique API id; the plain session id for sessions in the main runs folder
+    origin: str = "runs"  # runs | sim
 
     @property
     def spec(self) -> Path:
@@ -284,28 +367,48 @@ class Session:
 class RunStore:
     """Finds sessions under the runs folder and keeps parsed log tails between polls."""
 
-    def __init__(self, root: str | Path) -> None:
+    def __init__(self, root: str | Path, sim_roots: list[str | Path] | None = None) -> None:
         self.root = Path(root)
+        main = self.root.resolve()
+        # A simulator root that is the main folder (or inside it) would list the same sessions twice
+        self.sim_roots = [Path(r) for r in sim_roots or []
+                          if Path(r).resolve() != main and main not in Path(r).resolve().parents]
         self._lock = threading.Lock()
-        self._tails: dict[Path, JsonlTail] = {}
+        self._tails: OrderedDict[Path, JsonlTail] = OrderedDict()
         self._finals: dict[Path, tuple[tuple[float, int], Any]] = {}
-        self._records: dict[Path, tuple[tuple, list[dict], dict | None]] = {}
+        self._records: OrderedDict[Path, tuple[tuple, list[dict], dict | None]] = OrderedDict()
+        self._lights: dict[str, tuple[tuple, dict]] = {}
 
-    def _folders(self) -> list[Path]:
-        if not self.root.is_dir():
+    @staticmethod
+    def _subdirs(folder: Path) -> list[Path]:
+        try:
+            return sorted(p for p in folder.iterdir() if p.is_dir())
+        except OSError:
             return []
-        folders = [self.root]
-        folders += sorted(p for p in self.root.iterdir() if p.is_dir())
-        return folders
+
+    def _folders(self) -> list[tuple[Path, str, Path]]:
+        out: list[tuple[Path, str, Path]] = []
+        if self.root.is_dir():
+            out.append((self.root, "runs", self.root))
+            out += [(p, "runs", self.root) for p in self._subdirs(self.root)]
+        for root in self.sim_roots:
+            if not root.is_dir():
+                continue
+            out.append((root, "sim", root))
+            for child in self._subdirs(root):
+                out.append((child, "sim", root))
+                out += [(g, "sim", root) for g in self._subdirs(child)]
+        return out
 
     def scan(self) -> dict[str, Session]:
         found: dict[str, Session] = {}
-        for folder in self._folders():
+        for folder, origin, base in self._folders():
             game = folder.name if folder.name in GAMES else None
             try:
                 names = [p.name for p in folder.iterdir() if p.is_file()]
             except OSError:
                 continue
+            prefix = "" if origin == "runs" else folder.relative_to(base.parent).as_posix() + "/"
             for name in names:
                 if name.endswith(EVENTS_SUFFIX):
                     sid = name[: -len(EVENTS_SUFFIX)]
@@ -313,15 +416,26 @@ class RunStore:
                     sid = name[: -len(SPEC_SUFFIX)]
                 else:
                     continue
-                if sid and sid not in found:
-                    found[sid] = Session(sid, folder, game)
+                key = prefix + sid
+                if sid and key not in found:
+                    found[key] = Session(sid, folder, game, key, origin)
         return found
+
+    def _get(self, ident: str) -> Session | None:
+        """Finds a session by its key, or by plain session id (the main runs folder wins)."""
+        found = self.scan()
+        if ident in found:
+            return found[ident]
+        return next((s for s in found.values() if s.session_id == ident), None)
 
     def _tail(self, path: Path) -> list[dict]:
         with self._lock:
             tail = self._tails.get(path)
             if tail is None:
                 tail = self._tails[path] = JsonlTail(path)
+            self._tails.move_to_end(path)
+            while len(self._tails) > MAX_TAILS:
+                self._tails.popitem(last=False)
             return list(tail.refresh())
 
     def _final(self, path: Path) -> Any:
@@ -359,22 +473,29 @@ class RunStore:
         fallbacks = sum(1 for x in applied if (x.get("decision") or {}).get("source") == "fallback")
         start = next((e for e in events if e.get("type") == "session_start"), None)
         end = next((e for e in reversed(events) if e.get("type") == "session_end"), None)
+        out = self._outcome(s, len(lines), len(applied), fallbacks,
+                            sum(1 for e in events if e.get("type") == "decision"),
+                            lines[-1].get("state_after") if lines else None, start, end, final)
+        out["timing"] = timing_stats(lines)
+        return out
+
+    def _outcome(self, s: Session, n_lines: int, n_applied: int, fallbacks: int, decisions: int,
+                 last_state: Any, start: dict | None, end: dict | None, final: Any) -> dict:
         final = final if isinstance(final, dict) else None
-        state = lines[-1].get("state_after") if lines else (final or {}).get("state")
+        state = last_state if n_lines else (final or {}).get("state")
         state = state if isinstance(state, dict) else {}
         reported_won = (end or {}).get("won", (final or {}).get("won"))
         out: dict[str, Any] = {
             "game": s.game,
-            "lines": len(lines),
-            "steps": len(applied),
-            "rejected": len(lines) - len(applied),
+            "lines": n_lines,
+            "steps": n_applied,
+            "rejected": n_lines - n_applied,
             "fallbacks": fallbacks,
-            "fallback_share": round(fallbacks / len(applied), 4) if applied else 0.0,
-            "timing": timing_stats(lines),
+            "fallback_share": round(fallbacks / n_applied, 4) if n_applied else 0.0,
             "final_score": (final or {}).get("score", (end or {}).get("score")),
             "done": final is not None or end is not None,
             "won": reported_won,
-            "decisions": sum(1 for e in events if e.get("type") == "decision"),
+            "decisions": decisions,
         }
         if s.game == "snake":
             foods = int(state.get("foodEaten") or 0)
@@ -401,9 +522,67 @@ class RunStore:
         out["points_source"] = "session_end" if has_reported else "computed"
         out["agent_name"] = (start or {}).get("agent_name")
         start = start or {}
-        out.update(env=start.get("env"), env_kind=env_kind(start), model=start.get("model"),
+        kind = env_kind(start)
+        out.update(env=start.get("env"), env_kind=kind, source=session_source(kind, s.origin), model=start.get("model"),
                    model_source=start.get("model_source"), device=start.get("device"), design=start.get("design"),
-                   started_ts=start.get("ts"), ended_ts=(end or {}).get("ts"))
+                   started_ts=start.get("ts"), ended_ts=(end or {}).get("ts"), key=s.key or s.session_id)
+        return out
+
+    def _light(self, s: Session) -> dict:
+        """List-row summary from raw bytes, so listing 150 simulator sessions never parses every line."""
+        stats = []
+        for path in (s.spec, s.events, s.final):
+            try:
+                st = path.stat()
+                stats.append((st.st_mtime_ns, st.st_size))
+            except OSError:
+                stats.append(None)
+        key = tuple(stats)
+        with self._lock:
+            cached = self._lights.get(s.key)
+            if cached and cached[0] == key:
+                return cached[1]
+
+        def complete_lines(path: Path) -> list[bytes]:
+            try:
+                data = path.read_bytes()
+            except OSError:
+                return []
+            data = data[: data.rfind(b"\n") + 1]
+            return [raw for raw in data.split(b"\n") if raw.strip()]
+
+        def parse(raw: bytes) -> dict | None:
+            try:
+                obj = json.loads(raw)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                return None
+            return obj if isinstance(obj, dict) else None
+
+        def applied_fallback(raw: bytes) -> bool:
+            line = parse(raw) or {}
+            return line.get("result") == "applied" and (line.get("decision") or {}).get("source") == "fallback"
+
+        lines = complete_lines(s.spec)
+        events = complete_lines(s.events)
+        n_applied = sum(1 for raw in lines if b'"result":"applied"' in raw)
+        # Fallback lines are rare, so only those are parsed to check they were applied
+        fallbacks = sum(1 for raw in lines if b'"source":"fallback"' in raw and applied_fallback(raw))
+        decisions = sum(1 for raw in events if b'"type": "decision"' in raw or b'"type":"decision"' in raw)
+        last = parse(lines[-1]) if lines else None
+        first_event = parse(events[0]) if events else None
+        start = first_event if (first_event or {}).get("type") == "session_start" else None
+        end = None
+        for raw in reversed(events[-5:]):
+            ev = parse(raw) if b"session_end" in raw else None
+            if ev and ev.get("type") == "session_end":
+                end = ev
+                break
+        if s.game is None:
+            s.game = (last or {}).get("game") or (start or {}).get("game")
+        out = self._outcome(s, len(lines), n_applied, fallbacks, decisions, (last or {}).get("state_after"),
+                            start, end, self._final(s.final))
+        with self._lock:
+            self._lights[s.key] = (key, out)
         return out
 
     def sessions(self) -> list[dict]:
@@ -411,14 +590,13 @@ class RunStore:
         now = time.time()
         out = []
         for s in found:
-            lines, events, final = self._read(s)
-            summ = self.summarize(s, lines, events, final)
+            summ = self._light(s)
             score = summ["final_score"]
             if score is None:
                 score = summ.get("score", summ.get("foods"))
             mtime = s.mtime()
             age = round(now - mtime, 1)
-            out.append({"game": s.game, "session_id": s.session_id, "mtime": mtime, "age_s": age,
+            out.append({"game": summ["game"], "session_id": s.session_id, "mtime": mtime, "age_s": age,
                         "steps": summ["steps"], "last_score": score, "points": summ["points"],
                         "done": summ["done"], "won": summ["won"], "agent_name": summ["agent_name"],
                         "status": session_status(summ["done"], age), "env": summ["env"],
@@ -427,7 +605,8 @@ class RunStore:
                         "rejected": summ["rejected"], "fallbacks": summ["fallbacks"],
                         "fallback_share": summ["fallback_share"], "decisions": summ["decisions"],
                         "final_score": summ["final_score"], "points_source": summ["points_source"],
-                        "started_ts": summ["started_ts"], "folder": s.folder.name})
+                        "started_ts": summ["started_ts"], "folder": s.folder.name, "key": s.key,
+                        "source": summ["source"], "origin": s.origin})
         return out
 
     def _paired(self, s: Session, lines: list[dict], events: list[dict]) -> tuple[list[dict], dict | None]:
@@ -451,11 +630,14 @@ class RunStore:
             records.append(step_record(i, line, ev, err))
         with self._lock:
             self._records[s.spec] = (key, records, pending)
+            self._records.move_to_end(s.spec)
+            while len(self._records) > MAX_RECORD_SETS:
+                self._records.popitem(last=False)
         return records, pending
 
     def history(self, sid: str, after: int = 0, limit: int = HISTORY_PAGE) -> dict | None:
         """Compact per-line records (line + its decision event), paged forward from `after`."""
-        s = self.scan().get(sid)
+        s = self._get(sid)
         if s is None:
             return None
         lines, events, final = self._read(s)
@@ -471,6 +653,8 @@ class RunStore:
         age = round(time.time() - mtime, 1)
         return {
             "session_id": s.session_id,
+            "key": s.key,
+            "source": summary["source"],
             "game": s.game,
             "folder": str(s.folder),
             "reset": reset,
@@ -494,7 +678,7 @@ class RunStore:
 
     def step(self, sid: str, i: int) -> dict | None:
         """One full submission line with its decision event and the question asked per direction."""
-        s = self.scan().get(sid)
+        s = self._get(sid)
         if s is None:
             return None
         lines, events, _ = self._read(s)
@@ -506,7 +690,7 @@ class RunStore:
                 "questions_by_dir": questions_by_direction(line, ev)}
 
     def session(self, sid: str, after: int = 0, eafter: int = 0, limit: int = MAX_LINES_PER_POLL) -> dict | None:
-        s = self.scan().get(sid)
+        s = self._get(sid)
         if s is None:
             return None
         lines, events, final = self._read(s)
@@ -543,7 +727,7 @@ class RunStore:
         }
 
     def verify(self, sid: str) -> dict | None:
-        s = self.scan().get(sid)
+        s = self._get(sid)
         if s is None:
             return None
         try:
@@ -571,7 +755,9 @@ class RunStore:
         return result
 
 
-def make_handler(store: RunStore):
+def make_handler(store: RunStore, board: Leaderboard | None = None):
+    board = board or Leaderboard()
+
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args) -> None:  # keep the console for the bot
             pass
@@ -625,6 +811,19 @@ def make_handler(store: RunStore):
                 self._send(200, (STATIC / name).read_bytes(), ctype)
             elif not url.path.startswith("/api/") and self._app_file(url.path):
                 pass
+            elif url.path == "/api/leaderboard":
+                game = arg("game")
+                if not SAFE_GAME.match(game):
+                    self._json(400, {"error": f"bad game name {game!r}"})
+                    return
+                body = board.get(game)
+                # gameId is the arena session id: point matching rows at the local copy (main runs folder first)
+                local: dict[str, str] = {}
+                for s in store.scan().values():
+                    local.setdefault(s.session_id, s.key)
+                ids = {str(r.get("gameId")) for r in body["leaderboard"]}
+                body["local"] = {gid: key for gid, key in local.items() if gid in ids}
+                self._json(200, body)
             elif url.path == "/api/history":
                 sid = arg("id")
                 body = store.history(sid, int_arg("after", 0), int_arg("limit", HISTORY_PAGE)) if sid else None
@@ -642,7 +841,9 @@ def make_handler(store: RunStore):
             elif url.path == "/api/sessions":
                 items = store.sessions()
                 self._json(200, {"root": str(store.root.resolve()), "sessions": items,
-                                 "newest": items[0]["session_id"] if items else None})
+                                 "newest": items[0]["session_id"] if items else None,
+                                 "newest_key": items[0]["key"] if items else None,
+                                 "sim_roots": [str(r.resolve()) for r in store.sim_roots]})
             elif url.path == "/api/session":
                 sid = arg("id")
                 if not sid:
@@ -666,8 +867,19 @@ def make_handler(store: RunStore):
     return Handler
 
 
-def make_server(root: str | Path, host: str = "127.0.0.1", port: int = 8770) -> ThreadingHTTPServer:
-    server = ThreadingHTTPServer((host, port), make_handler(RunStore(root)))
+def resolve_sim_roots(patterns: list[str]) -> list[Path]:
+    roots: list[Path] = []
+    for pattern in patterns:
+        for match in sorted(glob.glob(pattern)):
+            path = Path(match)
+            if path.is_dir() and path not in roots:
+                roots.append(path)
+    return roots
+
+
+def make_server(root: str | Path, host: str = "127.0.0.1", port: int = 8770,
+                sim_roots: list[str | Path] | None = None) -> ThreadingHTTPServer:
+    server = ThreadingHTTPServer((host, port), make_handler(RunStore(root, sim_roots)))
     server.daemon_threads = True
     return server
 
@@ -677,10 +889,14 @@ def main() -> None:
     ap.add_argument("runs", nargs="?", default="runs", help="runs folder (default: runs)")
     ap.add_argument("--port", type=int, default=8770)
     ap.add_argument("--host", default="127.0.0.1")
+    ap.add_argument("--sim-roots", action="append", default=[], metavar="GLOB",
+                    help='read-only simulator folders, a glob relative to the working directory, e.g. "runs_sim*"')
     args = ap.parse_args()
-    server = make_server(args.runs, args.host, args.port)
+    sims = resolve_sim_roots(args.sim_roots)
+    server = make_server(args.runs, args.host, args.port, sims)
     host, port = server.server_address[:2]
-    print(f"arena viewer on http://{host}:{port}  (runs: {Path(args.runs).resolve()})", flush=True)
+    print(f"arena viewer on http://{host}:{port}  (runs: {Path(args.runs).resolve()}, "
+          f"simulator folders: {len(sims)})", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
