@@ -32,3 +32,13 @@ Thumbs.db
 
 # Hackathon submission deck and its local tooling (kept out of the public repo)
 presentation/
+
+# Training data, fine-tuned checkpoints and Kaggle downloads (large; datasets stay private on Kaggle)
+data/
+
+# Simulator runs are local test output, never results. Real arena sessions live in runs/ and ARE committed.
+runs_sim*/
+
+# Local backups and archives
+*.tgz
+*.zip
