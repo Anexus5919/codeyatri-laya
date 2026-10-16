@@ -9,9 +9,12 @@ A decision layer that plays the hosted games on [topgameai.com/arena](https://to
 | Game | Session id | Points | Notes |
 |---|---|---|---|
 | Snake | `2ba7267e-def5-4fdc-aa53-0a249329eab9` | **1000** (15 of 15 foods, 127 moves) | Base Laya `english`, zero-shot, no fallback moves, log verified |
+| Snake | `c286e971-3fd1-4b3b-b310-e2b264db8338` | **1000** (15 of 15 foods, 147 moves) | Second run, same setup, all moves decided by Laya |
 | 2048 | pending unlock | | Fine-tuned Laya, see below |
 
 Every real session, including failed or abandoned ones, is listed in [`docs/results.md`](docs/results.md). The logs are in [`runs/`](runs/).
+
+Check any session against the arena server's own record: `python -m laya_agent.arena.verify <session_id>` (hash chain, steps, final board, score).
 
 ## How a move is made
 
