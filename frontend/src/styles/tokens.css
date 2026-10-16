@@ -1,0 +1,110 @@
+/* Design tokens for the CodeYatri decision arena.
+   Breakpoints (media queries cannot read custom properties, so they are listed here and used literally):
+   --bp-sm 600px, --bp-md 900px, --bp-lg 1200px, --bp-xl 1600px */
+
+:root {
+  /* Surfaces: near-black oxblood, from the page floor up to raised instruments */
+  --c-floor: #0b0404;
+  --c-bg: #120706;
+  --c-surface-1: #190a09;
+  --c-surface-2: #21100e;
+  --c-surface-3: #2c1512;
+  --c-surface-4: #3a1c18;
+  --c-line: #3f1f1b;
+  --c-line-strong: #5e2f29;
+  --c-line-soft: rgba(214, 140, 120, 0.12);
+
+  /* Identity */
+  --c-burgundy: #5c141b;
+  --c-crimson: #a3212b;
+
+  /* Text: warm ivory */
+  --c-ivory: #f6ecdc;
+  --c-ivory-2: #d9c6b2;
+  --c-ivory-3: #ad9482;
+  --c-ivory-4: #7f685c;
+
+  /* Signals */
+  --c-ember: #ff5b37;
+  --c-ember-2: #ff8a5c;
+  --c-ember-soft: rgba(255, 91, 55, 0.14);
+  --c-ember-line: rgba(255, 91, 55, 0.55);
+  --c-cyan: #46d6e8;
+  --c-cyan-soft: rgba(70, 214, 232, 0.13);
+  --c-acid: #b8f53c;
+  --c-acid-soft: rgba(184, 245, 60, 0.12);
+  --c-amber: #ffb43a;
+  --c-amber-soft: rgba(255, 180, 58, 0.14);
+  --c-reject: #ff5f7e;
+  --c-reject-soft: rgba(255, 95, 126, 0.14);
+  --c-sim: #9fb9c4;
+  --c-sim-soft: rgba(159, 185, 196, 0.12);
+
+  /* Type */
+  --font-ui: "Bricolage Grotesque Variable", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "Cascadia Mono", Consolas, ui-monospace, monospace;
+  --fs-2xs: 10.5px;
+  --fs-xs: 11.5px;
+  --fs-sm: 12.5px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 26px;
+  --fs-3xl: 36px;
+  --lh-tight: 1.15;
+  --lh-body: 1.45;
+  --track-label: 0.08em;
+
+  /* Space */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 28px;
+  --sp-7: 40px;
+  --gutter: 16px;
+
+  /* Radii */
+  --r-xs: 3px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+
+  /* Glow */
+  --glow-ember: 0 0 0 1px var(--c-ember-line), 0 0 22px rgba(255, 91, 55, 0.22);
+  --glow-cyan: 0 0 0 1px rgba(70, 214, 232, 0.45), 0 0 18px rgba(70, 214, 232, 0.18);
+  --glow-acid: 0 0 0 1px rgba(184, 245, 60, 0.45), 0 0 18px rgba(184, 245, 60, 0.16);
+  --shadow-1: 0 1px 0 rgba(255, 230, 210, 0.04) inset, 0 10px 30px rgba(0, 0, 0, 0.35);
+
+  /* Motion (mirrored in src/lib/motion.ts) */
+  --dur-fast: 140ms;
+  --dur-base: 240ms;
+  --dur-slow: 420ms;
+  --dur-trace: 700ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Layers */
+  --z-backdrop: 0;
+  --z-base: 1;
+  --z-sticky: 10;
+  --z-rail: 20;
+  --z-overlay: 30;
+  --z-toast: 40;
+  --z-tooltip: 50;
+
+  /* Layout */
+  --rail-w: 76px;
+  --top-h: 60px;
+  --panel-w: clamp(360px, 30vw, 500px);
+  --focus: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-cyan);
+}
+
+:root[data-motion="low"] {
+  --dur-fast: 0ms;
+  --dur-base: 0ms;
+  --dur-slow: 0ms;
+  --dur-trace: 0ms;
+}

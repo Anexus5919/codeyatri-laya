@@ -42,3 +42,6 @@ runs_sim*/
 # Local backups and archives
 *.tgz
 *.zip
+
+# Dashboard dependencies (the built app in src/laya_agent/viewer/app_dist/ IS committed)
+frontend/node_modules/
