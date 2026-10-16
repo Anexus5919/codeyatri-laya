@@ -37,8 +37,8 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from ..arena.spec_log import verify_log
-from .doom_web import STATIC as DOOM_STATIC
-from .doom_web import DoomStore
+from .doom_web import ACTIONS as DOOM_ACTIONS
+from .doom_web import frame_bytes, has_frames, recording_checks
 
 STATIC = Path(__file__).with_name("arena_static")
 APP_DIST = Path(__file__).with_name("app_dist")
@@ -66,7 +66,7 @@ ASSET_TYPES = {
     ".txt": "text/plain; charset=utf-8",
 }
 SAFE_ASSET = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
-GAMES = ("snake", "2048")
+GAMES = ("snake", "2048", "doom")
 EVENTS_SUFFIX = ".events.jsonl"
 FINAL_SUFFIX = ".final.json"
 SPEC_SUFFIX = ".jsonl"
@@ -190,7 +190,7 @@ def compact_event(ev: dict | None) -> dict | None:
     if not isinstance(ev, dict):
         return None
     keys = ("step", "facts", "kinds", "p_true", "probabilities", "chosen", "source", "laya_choice", "reason",
-            "decide_ms", "laya_ms", "ts")
+            "decide_ms", "laya_ms", "ts", "offered", "tic")
     return {k: ev.get(k) for k in keys}
 
 
@@ -201,7 +201,8 @@ def questions_by_direction(line: dict, ev: dict | None) -> dict[str, str] | None
     p_true = (ev or {}).get("p_true")
     if not isinstance(questions, list) or not isinstance(p_true, dict):
         return None
-    asked = [d for d in DIRECTIONS if d in p_true]
+    order = DOOM_ACTIONS if any(k not in DIRECTIONS for k in p_true) else DIRECTIONS
+    asked = [d for d in order if d in p_true]
     if len(asked) != len(questions):
         return None
     return dict(zip(asked, questions))
@@ -384,9 +385,8 @@ class RunStore:
 
     @staticmethod
     def _subdirs(folder: Path) -> list[Path]:
-        # Doom sessions have their own page and log keys (laya_agent.viewer.doom_web); they are not arena sessions
         try:
-            return sorted(p for p in folder.iterdir() if p.is_dir() and p.name != "doom")
+            return sorted(p for p in folder.iterdir() if p.is_dir() and not p.name.endswith(".frames"))
         except OSError:
             return []
 
@@ -424,6 +424,9 @@ class RunStore:
                 if sid and key not in found:
                     found[key] = Session(sid, folder, game, key, origin)
         return found
+
+    def find(self, ident: str) -> Session | None:
+        return self._get(ident)
 
     def _get(self, ident: str) -> Session | None:
         """Finds a session by its key, or by plain session id (the main runs folder wins)."""
@@ -517,6 +520,17 @@ class RunStore:
             tile_steps = max(0, int(math.log2(tile)) - 6) if tile else 0
             out.update(best_tile=tile, score=score, target_tile=TILE_UNLOCK,
                        progress=min(1.0, tile_steps / steps_to_target), unlocked=tile >= TILE_UNLOCK)
+        elif s.game == "doom":
+            # The last line's state_after is the engine's variables, or the episode result once it ended
+            f = final or {}
+            settings = f.get("settings") or (start or {}).get("settings") or {}
+            out.update(kills=int(f.get("kills", state.get("kills") or 0)), health=f.get("health", state.get("health")),
+                       dead=bool(f.get("dead", state.get("dead", False))),
+                       exited=bool(f.get("exited", state.get("exited", False))),
+                       items=f.get("items", state.get("items")), explored=f.get("explored_cells"),
+                       scenario=settings.get("scenario"))
+            out["won"] = out["exited"] if out["done"] else None
+            computed = None
         else:
             computed = None
         reported = (end or {}).get("points")
@@ -527,6 +541,8 @@ class RunStore:
         out["agent_name"] = (start or {}).get("agent_name")
         start = start or {}
         kind = env_kind(start)
+        if s.game == "doom" and kind == "unknown":
+            kind = "engine"  # stage 3 runs in our own copy of the engine, never on the hosted arena
         out.update(env=start.get("env"), env_kind=kind, source=session_source(kind, s.origin), model=start.get("model"),
                    model_source=start.get("model_source"), device=start.get("device"), design=start.get("design"),
                    started_ts=start.get("ts"), ended_ts=(end or {}).get("ts"), key=s.key or s.session_id)
@@ -610,7 +626,7 @@ class RunStore:
                         "fallback_share": summ["fallback_share"], "decisions": summ["decisions"],
                         "final_score": summ["final_score"], "points_source": summ["points_source"],
                         "started_ts": summ["started_ts"], "folder": s.folder.name, "key": s.key,
-                        "source": summ["source"], "origin": s.origin})
+                        "source": summ["source"], "origin": s.origin, "kills": summ.get("kills")})
         return out
 
     def _paired(self, s: Session, lines: list[dict], events: list[dict]) -> tuple[list[dict], dict | None]:
@@ -730,10 +746,13 @@ class RunStore:
             "age_s": age,
         }
 
-    def verify(self, sid: str) -> dict | None:
+    def verify(self, sid: str, replay: bool = False) -> dict | None:
         s = self._get(sid)
         if s is None:
             return None
+        if s.game is None:
+            self._read(s)
+        doom = s.game == "doom"
         try:
             data = s.spec.read_bytes()
         except OSError:
@@ -743,25 +762,35 @@ class RunStore:
             return {"ok": None, "pending": True, "problems": [], "lines": 0, "chain_ok": None}
         final = self._final(s.final)
         final = final if isinstance(final, dict) else None
+        # A Doom final record is the episode result, not an arena response, so the chain is checked on its own
+        # and the recording checks below compare the log with the final record
+        kw = {"keys": DOOM_ACTIONS} if doom else {}
+        against = None if doom else final
         if cut == len(data):
-            result = verify_log(s.spec, final)
+            result = verify_log(s.spec, against, **kw)
         else:
             # A line is being appended right now; check the complete lines only
             fd, tmp = tempfile.mkstemp(suffix=".jsonl")
             try:
                 with os.fdopen(fd, "wb") as fh:
                     fh.write(data[:cut])
-                result = verify_log(tmp, final)
+                result = verify_log(tmp, against, **kw)
             finally:
                 os.unlink(tmp)
         result["chain_ok"] = not any("hash" in p for p in result.get("problems", []))
         result["pending"] = False
+        if doom:
+            rec = recording_checks(s.folder, s.session_id, final, result.get("applied"), replay)
+            result["checks"] = {"hash chain, step order and decision blocks": not result["problems"], **rec["checks"]}
+            result["replay"] = rec["replay"]
+            result["problems"] = result["problems"] + [f"{k}: no" for k, ok in rec["checks"].items() if not ok]
+            result["ok"] = not result["problems"]
+            result["frames"] = has_frames(s.folder, s.session_id)
         return result
 
 
-def make_handler(store: RunStore, board: Leaderboard | None = None, doom: DoomStore | None = None):
+def make_handler(store: RunStore, board: Leaderboard | None = None):
     board = board or Leaderboard()
-    doom = doom or DoomStore(store.root, store.sim_roots)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args) -> None:  # keep the console for the bot
@@ -810,27 +839,18 @@ def make_handler(store: RunStore, board: Leaderboard | None = None, doom: DoomSt
                     return default
 
             if url.path in ("/doom", "/doom/"):
-                self._send(200, (DOOM_STATIC / "index.html").read_bytes(), "text/html; charset=utf-8")
-            elif url.path == "/api/doom/sessions":
-                self._json(200, {"sessions": doom.sessions()})
-            elif url.path == "/api/doom/session":
-                body = doom.session(arg("id"), int_arg("after", 0))
-                if body is None:
-                    self._json(404, {"error": f"unknown Doom session {arg('id')!r}"})
-                else:
-                    self._json(200, body)
-            elif url.path == "/api/doom/frame":
-                img = doom.frame(arg("id"), arg("step", "latest"))
+                # The Doom view lives in the dashboard, next to Snake and 2048
+                self.send_response(302)
+                self.send_header("Location", "/#/arena?g=doom")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+            elif url.path == "/api/frame":
+                s = store.find(arg("id"))
+                img = frame_bytes(s.folder, s.session_id, arg("step", "latest")) if s else None
                 if img is None:
                     self._send(404, b"no frame", "text/plain")
                 else:
                     self._send(200, img, "image/jpeg")
-            elif url.path == "/api/doom/verify":
-                body = doom.verify(arg("id"), replay=arg("replay") == "1")
-                if body is None:
-                    self._json(404, {"error": f"unknown Doom session {arg('id')!r}"})
-                else:
-                    self._json(200, body)
             elif url.path in APP_PAGES and (APP_DIST / "index.html").is_file():
                 self._send(200, (APP_DIST / "index.html").read_bytes(), "text/html; charset=utf-8")
             elif url.path in STATIC_FILES:
@@ -883,7 +903,7 @@ def make_handler(store: RunStore, board: Leaderboard | None = None, doom: DoomSt
                 else:
                     self._json(200, body)
             elif url.path == "/api/verify":
-                body = store.verify(arg("id"))
+                body = store.verify(arg("id"), replay=arg("replay") == "1")
                 if body is None:
                     self._json(404, {"error": f"unknown session {arg('id')!r}"})
                 else:
