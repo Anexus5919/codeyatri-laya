@@ -171,3 +171,10 @@ Chance (uniform over legal moves): 0.526.
 - 2026-10-16. Continued the E8 head-only checkpoint for 1 epoch on `data/ft2048_r2` (128,024 questions, 16,688 positions from boards the fine-tuned Laya itself reached, labelled by the same priority reader).
 - Held-out agreement 0.830 to 0.835, ECE 0.0145 to 0.0166: a marginal change. Not played in full games.
 - Interpretation: with the encoder frozen, the head has reached its ceiling; E9 shows the encoder is where the gain is. Round 2 continues as a full-model run on Kaggle (`codeyatri-laya-2048-finetune-r2`).
+
+## E11: First real 2048 run, and what lost it
+
+- 2026-10-16, real arena session `f7ee009c` (checkpoint `ckpt_kaggle_bounded_frozen`, facts v3). 294 moves, best tile 256, 289 points by the guide formula (the arena's own score field says 735). All moves by Laya, no fallbacks, log verified against the server.
+- The simulator is faithful: all 294 real transitions are one slide plus one new tile, with 4s spawned 10.2% of the time (simulator: 10%).
+- The largest tile stayed in the bottom-left corner for 169 moves. At step 169 only up (loses the corner) and right (keeps it, board less ordered) were legal; Laya scored them 0.093 and 0.092 and took up. At step 170 down would have moved the 256 back into the corner (P(yes) 0.820) but Laya preferred left (0.941: more order, more empty cells, two merges). The corner never came back.
+- Interpretation: two gaps. (1) Near-ties between two bad options are decided by noise. (2) Corner recovery is rare in the training data because the teacher's own games almost never lose the corner. Round 2 (boards our fine-tuned Laya reached, including lost corners) targets (2); a close-call follow-up question to Laya would target (1).
