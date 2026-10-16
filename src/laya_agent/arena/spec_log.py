@@ -37,12 +37,12 @@ def genesis_hash(session_id: str) -> str:
     return f"GENESIS-{session_id}"
 
 
-def decision_problems(decision: dict, action: str) -> list[str]:
-    """Checks section 3.2 for one decision block."""
+def decision_problems(decision: dict, action: str, keys: tuple[str, ...] = DIRECTIONS) -> list[str]:
+    """Checks section 3.2 for one decision block (keys: the game's action names, up/down/left/right by default)."""
     out = []
     probs = decision.get("probabilities")
-    if not isinstance(probs, dict) or set(probs) != set(DIRECTIONS):
-        out.append("probabilities must have exactly the keys up, down, left, right")
+    if not isinstance(probs, dict) or set(probs) != set(keys):
+        out.append(f"probabilities must have exactly the keys {', '.join(keys)}")
         return out
     vals = list(probs.values())
     if any(not isinstance(v, (int, float)) or isinstance(v, bool) or math.isnan(v) or v < 0 or v > 1 for v in vals):
@@ -64,8 +64,9 @@ def decision_problems(decision: dict, action: str) -> list[str]:
 class SpecLog:
     """Append-only, fsynced, hash-chained submission log for one game session."""
 
-    def __init__(self, path: str | Path, session_id: str, game: str) -> None:
+    def __init__(self, path: str | Path, session_id: str, game: str, keys: tuple[str, ...] = DIRECTIONS) -> None:
         self.path = Path(path)
+        self.keys = tuple(keys)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.session_id = session_id
         self.game = game
@@ -81,7 +82,7 @@ class SpecLog:
               decision: dict, timing: dict) -> dict:
         if result not in ("applied", "rejected"):
             raise ValueError("result must be applied or rejected")
-        problems = decision_problems(decision, action)
+        problems = decision_problems(decision, action, getattr(self, "keys", DIRECTIONS))
         if problems:
             raise ValueError(f"decision block breaks section 3.2: {problems}")
         line = {
@@ -165,7 +166,7 @@ def save_final_response(folder: str | Path, session_id: str, response: Any) -> P
     return p
 
 
-def verify_log(path: str | Path, final_response: dict | None = None) -> dict:
+def verify_log(path: str | Path, final_response: dict | None = None, keys: tuple[str, ...] = DIRECTIONS) -> dict:
     """Checks a log the way section 5.1 describes a verified run (parts we can check locally)."""
     problems: list[str] = []
     lines: list[dict] = []
@@ -198,7 +199,7 @@ def verify_log(path: str | Path, final_response: dict | None = None) -> dict:
         if line_hash(line["prev_hash"], body) != line["hash"]:
             problems.append(f"line {n}: hash does not match its content")
         prev = line["hash"]
-        problems += [f"line {n}: {p}" for p in decision_problems(line["decision"], line["action"])]
+        problems += [f"line {n}: {p}" for p in decision_problems(line["decision"], line["action"], keys)]
         if line["result"] == "applied":
             if line["step"] != expected_step:
                 problems.append(f"line {n}: step {line['step']}, expected {expected_step}")
