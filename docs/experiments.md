@@ -235,3 +235,12 @@ Chance (uniform over legal moves): 0.526.
 
 - Decision: the quick checkpoint (`data/ftdoom/ckpt_quick_frozen`) plays judged Doom runs. The full checkpoint explores the full levels further (E1M1, MAP01) and is the alternative if the judged level is a full map; round 2's turn-around did not pay off yet.
 - Evidence: `docs/evidence/eval_doom_{reader_v2,quick_v2,full,r2}.json`.
+
+## E16: Doom, real time vs turn-based, and firing while stepping away (17 Oct, 09:15 to 09:47)
+
+- Real time is the weak mode: Laya takes about 230 ms per decision with 10 questions, so it acts only every ~10 game tics. Quick Laya in real time: E1M1 2 kills, died at 55 s (`runs/doom`, e9176fdc); defend_the_line 7 kills in 32 decisions, died.
+- Turn-based (the engine waits for each decision, the setup of every evaluation): E1M1 12 kills, alive at 1.5 minutes.
+- Deaths came from enemies at melee range: a Demon at 50 units, an Imp clawing from 54 units while Laya shot a far Imp. A shot now fires while backing away from the closest enemy within 160 units, or side-steps onto open ground away from it when a wall is behind (the shoot fact says which; Laya still decides whether to shoot).
+- Rule reader, 3-minute levels: E1M1 8 kills, died, to 12 kills, alive; defend_the_line seed 12 24 to 49 kills.
+- Quick Laya, turn-based, 3 minutes, seed 0: E1M1 8 kills, alive (health 51); E1M2 11 kills, died at 53 s while stepping away only from the aimed enemy, then 16 kills, alive (health 47) once it steps away from the closest one.
+- Decision: judged Doom runs are turn-based on E1M2 with `ckpt_quick_frozen`; `--realtime` stays an option.
