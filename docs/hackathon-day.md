@@ -5,7 +5,7 @@ Every real session is a permanent public record: never delete a log, never start
 
 ## 0. Before any real run
 
-- [ ] `.venv\Scripts\python -m pytest -q` passes (66 tests on 16 Oct).
+- [ ] `.venv\Scripts\python -m pytest -q` passes (120 tests on 17 Oct).
 - [ ] GPU in use: `.venv\Scripts\python -c "import torch;print(torch.cuda.is_available())"` prints True.
 - [ ] `runs/` is empty or contains only real sessions. Simulator output lives in `runs_sim*/`, never in `runs/`.
 - [ ] Mentor questions asked (section 4) and answers written into `docs/decisions.md`.
@@ -19,8 +19,9 @@ Every real session is a permanent public record: never delete a log, never start
 
 # terminal 2: one session
 .venv\Scripts\python -m laya_agent.arena.runner --game snake
-.venv\Scripts\python -m laya_agent.arena.runner --game 2048 --style v3
-# fine-tuned checkpoint, once allowed:  --model path\to\checkpoint
+.venv\Scripts\python -m laya_agent.arena.runner --game 2048 --model data\ft2048\ckpt_kaggle_full_frozen
+# add --sim to either command for a local practice run (no public arena record)
+# the full demo command sheet is docs/demo.md
 ```
 
 What lands in `runs/<game>/`:
@@ -34,7 +35,7 @@ decision blocks valid, fallback share within 10%, final response matches the las
 ## 2. After each session
 
 - [ ] Note the session id, points and whether `ok` was true in `docs/results.md`.
-- [ ] Snake at 600 or more: tell the organisers and ask for the 2048 unlock confirmation.
+- [ ] Snake at 600 or more opens 2048 on the arena (nothing to request; the arena does not lock games).
 - [ ] Keep failed sessions. The rules treat hiding attempts as a fair-play breach.
 
 ## 3. Known facts about the arena (captured 16 Oct, 10:52 IST)

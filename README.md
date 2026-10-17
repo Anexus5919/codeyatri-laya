@@ -94,12 +94,13 @@ The organisers confirmed stage 3 is the actual Doom, played in an open-source en
 - **No search.** Facts are one-step readings (a straight line to the first wall, where an enemy ends up after one turn). Memory is only what the player has done and seen: visited ground, the last action, a door already pressed.
 - **Real time.** The engine can run at Doom's 35 tics a second while Laya decides (about 100 to 170 ms per decision on the RTX 3050), or wait for each decision.
 - **Proof.** Each episode writes the same hash-chained log as the arena games (Doom's action names as the probability keys), the full decision record, and the engine's demo recording, whose sha256 is in the final record. Replaying the recording in the engine reproduces the result; the Doom page of the dashboard runs that check.
+- **Result (11 fixed games, E14 and E15).** Untrained Laya: 51 kills, no corridor cleared. Fine-tuned Laya: 196 kills and the deadly corridor cleared 3 of 3, more than the rule reader that labelled its training data (163), with every action Laya's own (0 fallback).
 - **Training.** Laya is fine-tuned on Doom facts with labels from a fixed priority reading of the same facts, collected from offline games on the nine Freedoom E1 maps, eight Doom II style maps and the ViZDoom combat scenarios.
 
 ```bash
 pip install -e ".[doom]"
 # one episode of the first Freedoom level, game window visible, real time, screen captures for the dashboard
-python -m laya_agent.doom.runner --scenario freedoom1:E1M1 --model data/ftdoom/ckpt --realtime --visible --frames
+python -m laya_agent.doom.runner --scenario freedoom1:E1M1 --model data/ftdoom/ckpt_quick_frozen --realtime --visible --frames
 # dashboard: http://127.0.0.1:8770/doom (or the Doom button in the header)
 ```
 
