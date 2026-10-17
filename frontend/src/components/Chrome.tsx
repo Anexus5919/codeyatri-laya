@@ -141,6 +141,8 @@ export function TopBar() {
   const vBusy = useStore((s) => s.verifyBusy);
   const vErr = useStore((s) => s.verifyError);
   const summary = meta?.summary;
+  // Without test folders (judging mode) there is nothing but real runs, so the real/test switch is not shown
+  const simRoots = useStore((s) => s.simRoots);
   const pickerShown = usePickerRows().length >= 2;
   const lastSeq = useRef(total);
   const pulseRef = useRef<HTMLSpanElement>(null);
@@ -161,7 +163,7 @@ export function TopBar() {
       <div className="top-left">
         <span className="brand-name">CodeYatri</span>
         <GameSwitch />
-        <SourceSwitch />
+        {simRoots.length ? <SourceSwitch /> : null}
         <SessionPicker />
       </div>
       <div className="top-right" aria-live="polite">

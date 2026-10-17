@@ -10,9 +10,12 @@ cd C:\Users\ANEXUS\Desktop\laya-game-agent
 ## 1. Dashboard (start first, keep it visible)
 
 ```powershell
+# judging: real runs only (no practice or test runs anywhere on screen)
+python -m laya_agent.viewer.arena_web runs --port 8770
+# practice: also show local practice and test runs (adds an Arena (real) / Simulator (test) switch)
 python -m laya_agent.viewer.arena_web runs --port 8770 --sim-roots "runs_sim*"
 ```
-Open http://127.0.0.1:8770. Header: Snake | 2048 | Doom, then Arena (real) / Simulator (test) (for Doom: Real runs / Test runs).
+Open http://127.0.0.1:8770. Header: Snake | 2048 | Doom. A run started while the page is open is followed automatically.
 
 ## 2. Snake (stage 1, base Laya, no training)
 
@@ -36,14 +39,14 @@ python -m laya_agent.arena.runner --game 2048 --model data\ft2048\ckpt_kaggle_fu
 
 ## 4. Doom (stage 3, fine-tuned Laya, our own engine)
 
+Doom is not on the arena; every Doom game runs in our own copy of the engine, and these commands save it as a real, judged run.
 ```powershell
-# judged run: game window, real time, screens for the dashboard (Doom > Real runs)
+# judged run on the first level: game window, real time, screens for the dashboard
 python -m laya_agent.doom.runner --scenario freedoom1:E1M1 --model data\ftdoom\ckpt_quick_frozen --frames --visible --realtime --minutes 3
-# test run (Doom > Test runs)
-python -m laya_agent.doom.runner --scenario freedoom1:E1M1 --model data\ftdoom\ckpt_quick_frozen --runs runs_sim_doom --frames --visible --realtime --minutes 3
 # combat showcase (monsters keep coming: aim and shoot)
-python -m laya_agent.doom.runner --scenario defend_the_line --model data\ftdoom\ckpt_quick_frozen --runs runs_sim_doom --frames --visible --realtime --minutes 2
+python -m laya_agent.doom.runner --scenario defend_the_line --model data\ftdoom\ckpt_quick_frozen --frames --visible --realtime --minutes 2
 ```
+Adding `--runs runs_sim_doom` files a run as a test run instead (shown only by the practice dashboard).
 Other levels: `freedoom1:E1M2` to `E1M9`, `freedoom2:MAP01`; scenarios `defend_the_center`, `deadly_corridor`, `deathmatch`.
 On a full level where exploring matters most, `data\ftdoom\ckpt_full_frozen` explored further (E15).
 
