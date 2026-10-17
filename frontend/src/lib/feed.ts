@@ -53,8 +53,9 @@ export function selectSession(id: string, opts: { manual?: boolean } = {}): void
     patch.source = sourceOf(row);
   }
   if (opts.manual) {
+    // Picking the newest session means "follow what comes next"; picking an older one pins the view
     const newest = row ? newestFor(s.sessions, sourceOf(row), null) : null;
-    patch.followNewest = newest && keyOf(newest) === id ? s.followNewest : false;
+    patch.followNewest = !!newest && keyOf(newest) === id;
   }
   if (s.sessionId === id) {
     store.set(patch);
@@ -84,7 +85,7 @@ export function selectSession(id: string, opts: { manual?: boolean } = {}): void
 export function chooseGame(game: string): void {
   const s = store.get();
   const row = newestFor(s.sessions, s.source, game);
-  store.set({ game, newSessionNotice: null });
+  store.set({ game, newSessionNotice: null, followNewest: true });
   if (row) selectSession(keyOf(row));
   else clearSession();
 }
@@ -92,7 +93,7 @@ export function chooseGame(game: string): void {
 export function chooseSource(source: DataSource): void {
   const s = store.get();
   const row = newestFor(s.sessions, source, s.game);
-  store.set({ source, newSessionNotice: null });
+  store.set({ source, newSessionNotice: null, followNewest: true });
   if (row) selectSession(keyOf(row));
   else clearSession();
 }
@@ -107,7 +108,8 @@ async function pollSessions(): Promise<void> {
       // "Newest" means a session that appeared since the last poll in the source being viewed. Sorting by
       // write time alone would bounce between two sessions that are both being written.
       const ids = new Set(body.sessions.map(keyOf));
-      const fresh = known ? body.sessions.filter((x) => !known!.has(keyOf(x)) && sourceOf(x) === s.source) : [];
+      // A run started while the page is open, in any game or source (a practice run included)
+      const fresh = known ? body.sessions.filter((x) => !known!.has(keyOf(x))) : [];
       const first = known === null;
       known = ids;
       const current = s.sessionId ? body.sessions.find((x) => keyOf(x) === s.sessionId) : undefined;
@@ -122,11 +124,12 @@ async function pollSessions(): Promise<void> {
           // Nothing for this source yet: still land on a game so the empty state can name it
           store.set({ game: body.sessions[0]?.game ?? "snake" });
         }
-      } else if (s.followNewest && fresh.length) {
+      } else if (fresh.length) {
         const target = keyOf(fresh[0]);
-        // Never pull someone out of the history they are reading; offer the switch instead
+        // Follow the new run (switching game and source with it), but never pull someone out of the history
+        // they are reading or off a session they pinned; offer the switch instead
         if (target !== s.sessionId) {
-          if (s.selection.mode === "history") store.set({ newSessionNotice: target });
+          if (!s.followNewest || s.selection.mode === "history") store.set({ newSessionNotice: target });
           else selectSession(target);
         }
       }
