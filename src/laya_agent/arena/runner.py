@@ -59,16 +59,23 @@ def _not_sent_types() -> tuple[type, ...]:
         return ()
 
 
+SERVER_ERROR_LIMIT = 3
+
+
 def _play_loop(client: Any, decider: LayaMoveDecider, sid: str, log: SpecLog, events: EventLog, resp: dict,
                quiet: bool, max_rejects: int, say) -> dict:
     """Plays until the server says done. Returns the last server response."""
     t_prev_resp = time.monotonic()
     state = resp["state"]
     rejects_this_step: set[str] = set()
+    # A move the arena keeps answering with a server error (and never applies) is set aside for this step after
+    # SERVER_ERROR_LIMIT tries, and Laya chooses among the other moves; nothing is logged as applied or rejected
+    server_errors: dict[str, int] = {}
+    set_aside: set[str] = set()
     not_sent = _not_sent_types()
     while not resp.get("done"):
         t_state = time.monotonic()
-        dec = decider.decide(state, applied=log.applied, fallbacks=log.fallbacks, exclude=rejects_this_step)
+        dec = decider.decide(state, applied=log.applied, fallbacks=log.fallbacks, exclude=rejects_this_step | set_aside)
         t_decided = time.monotonic()
         step = log.applied + 1
         events.write({"type": "decision", "session_id": sid, "step": step,
@@ -96,6 +103,17 @@ def _play_loop(client: Any, decider: LayaMoveDecider, sid: str, log: SpecLog, ev
             code, body = client.get(sid)
             if body.get("steps", -1) <= log.applied:
                 events.write({"type": "reconcile", "step": step, "verdict": "not_applied", "ts": utc_ts()})
+                n = server_errors[dec.action] = server_errors.get(dec.action, 0) + 1
+                if n >= SERVER_ERROR_LIMIT:
+                    set_aside.add(dec.action)
+                    say(f"step {step}: the arena failed '{dec.action}' {n} times without applying it; asking Laya "
+                        f"to choose among the other moves")
+                    events.write({"type": "set_aside", "step": step, "action": dec.action, "server_errors": n,
+                                  "ts": utc_ts()})
+                    legal = [d for d, f in dec.facts.items() if f.legal]
+                    if legal and set(legal) <= set_aside | rejects_this_step:
+                        raise RuntimeError(f"the arena fails every legal move at step {step}")
+                time.sleep(min(10.0, 2.0 * n))  # give the arena a moment instead of hammering it
                 continue
             events.write({"type": "reconcile", "step": step, "verdict": "applied", "ts": utc_ts()})
         t_resp = time.monotonic()
@@ -117,6 +135,7 @@ def _play_loop(client: Any, decider: LayaMoveDecider, sid: str, log: SpecLog, ev
         log.write(step=step, state_before=state, action=dec.action, state_after=body["state"],
                   result="applied", decision=dec.decision_block(), timing=timing)
         rejects_this_step = set()
+        server_errors, set_aside = {}, set()
         if hasattr(decider, "note_applied"):
             decider.note_applied()
         resp, state = body, body["state"]

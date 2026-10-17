@@ -141,3 +141,37 @@ def test_resume_refuses_when_the_server_has_an_unlogged_move(tmp_path):
     assert sim.act(sim.direction) is None  # a move the log never recorded
     with pytest.raises(SystemExit):
         resume_session(arena, decider(), "snake", tmp_path, sid, quiet=True)
+
+
+class BrokenMoveArena(FakeArena):
+    """The server crashes (HTTP 500, nothing applied) on one move at one step, like the real 2048 step 563."""
+
+    def __init__(self, *a, broken_step=5, **kw):
+        super().__init__(*a, **kw)
+        self.broken_step = broken_step
+        self.broken_action = None
+        self.errors = 0
+
+    def act(self, sid, action):
+        steps = self.sessions[sid][1].steps
+        if steps + 1 == self.broken_step and (self.broken_action in (None, action)):
+            self.broken_action = action
+            self.errors += 1
+            raise SubmissionAmbiguous("server error HTTP 500")
+        return super().act(sid, action)
+
+
+def test_a_move_the_server_keeps_failing_is_set_aside_and_the_game_goes_on(tmp_path, monkeypatch):
+    import laya_agent.arena.runner as runner
+
+    monkeypatch.setattr(runner.time, "sleep", lambda s: None)
+    arena = BrokenMoveArena(seed=17)
+    report = play_session(arena, decider(), "snake", tmp_path, "TEST", quiet=True)
+    assert report["ok"], report["problems"]
+    assert arena.errors == runner.SERVER_ERROR_LIMIT
+    sid = next(iter(arena.sessions))
+    lines = lines_of(tmp_path / "snake" / f"{sid}.jsonl")
+    assert all(ln["result"] == "applied" for ln in lines)
+    assert lines[4]["action"] != arena.broken_action  # step 5 was played with another move
+    events = [json.loads(x) for x in (tmp_path / "snake" / f"{sid}.events.jsonl").read_text().splitlines()]
+    assert any(e["type"] == "set_aside" and e["action"] == arena.broken_action for e in events)
