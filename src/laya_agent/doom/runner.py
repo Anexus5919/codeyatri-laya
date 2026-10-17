@@ -25,7 +25,7 @@ from pathlib import Path
 from ..arena.spec_log import SpecLog, utc_ts, verify_log
 from .decider import DoomDecider
 from .engine import ACTIONS, DoomEnv, Observation
-from .facts import Perceiver, Scene
+from .facts import Perceiver, Scene, backs
 
 
 def compact(scene: Scene, tic: int) -> dict:
@@ -146,7 +146,7 @@ def play_episode(env: DoomEnv, decider: DoomDecider, runs_dir: str | Path, agent
                    "probabilities": dec.probabilities, "chosen": dec.action, "source": dec.source,
                    "laya_ms": round(dec.laya_ms, 1), "decide_ms": round(decide_ms)})
             t1 = time.perf_counter()
-            reward = env.act(dec.action)
+            reward = env.act(dec.action, back=backs(dec.facts, dec.action))
             engine_ms = (time.perf_counter() - t1) * 1000
             perceiver.note(dec.action)
             obs = None if env.done else env.observe()

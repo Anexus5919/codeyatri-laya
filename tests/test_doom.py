@@ -7,7 +7,7 @@ import pytest
 
 from laya_agent.arena.spec_log import SpecLog, verify_log
 from laya_agent.doom.engine import ACTIONS
-from laya_agent.doom.facts import Enemy, Item, Missile, Scene, facts, questions, reader_choice, reader_scores, state_text
+from laya_agent.doom.facts import Enemy, Item, Missile, Scene, backs, facts, questions, reader_choice, reader_scores, state_text
 from laya_agent.doom.geometry import Explored, Hit, LevelGeometry, bearing
 
 
@@ -63,6 +63,19 @@ def test_shooting_an_enemy_in_the_crosshair_is_the_reader_choice():
     fs = facts(s)
     assert "hits it" in fs["shoot"].text
     assert reader_choice(reader_scores(s, fs)) == "shoot"
+
+
+def test_a_close_shot_backs_away_or_side_steps_a_wall_behind():
+    demon = Enemy(1, "Demon", 60.0, 0.0, True, True, 30.0)
+    s = scene(enemies=[demon])
+    assert backs(facts(s), "shoot") == "backward" and "back away" in facts(s)["shoot"].text
+    s.rays["backward"] = Hit(20.0, "wall")
+    s.rays["strafe_left"] = Hit(100.0, "wall")
+    assert backs(facts(s), "shoot") == "strafe_right"  # the longer open side
+    s.enemies.append(Enemy(2, "Imp", 200.0, -90.0, True, False))
+    assert backs(facts(s), "shoot") == "strafe_left"   # never steps toward another enemy
+    assert backs(facts(s), "forward") is None
+    assert backs(facts(scene(enemies=[Enemy(1, "Imp", 300.0, 1.0, True, True)])), "shoot") is None  # far: stand and fire
 
 
 def test_firing_at_nothing_is_described_as_waste_and_never_chosen():

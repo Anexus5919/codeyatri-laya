@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 from laya_agent.doom.engine import DoomEnv
-from laya_agent.doom.facts import Perceiver, facts, reader_choice, reader_scores
+from laya_agent.doom.facts import Perceiver, backs, facts, reader_choice, reader_scores
 
 SUITE = [("defend_the_center", s, 2.0) for s in (11, 12, 13)] + \
         [("defend_the_line", s, 2.0) for s in (11, 12)] + \
@@ -35,9 +35,10 @@ def play_simple(policy: str, scenario: str, seed: int, minutes: float) -> dict:
         if obs is None:
             break
         s = p.scene(obs)
-        sc = reader_scores(s, facts(s))
+        fs = facts(s)
+        sc = reader_scores(s, fs)
         a = reader_choice(sc) if policy == "reader" else rng.choice(sorted(sc))
-        env.act(a)
+        env.act(a, back=backs(fs, a))
         p.note(a)
         steps += 1
     out = env.outcome()

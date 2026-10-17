@@ -21,7 +21,7 @@ from multiprocessing import Pool
 from pathlib import Path
 
 from laya_agent.doom.engine import DoomEnv
-from laya_agent.doom.facts import CRITERIA, Perceiver, facts, questions, reader_choice, reader_scores, state_text
+from laya_agent.doom.facts import CRITERIA, Perceiver, backs, facts, questions, reader_choice, reader_scores, state_text
 
 MAPS1 = [f"freedoom1:E1M{i}" for i in range(1, 10)]
 MAPS2 = [f"freedoom2:MAP0{i}" for i in range(1, 9)]
@@ -78,7 +78,7 @@ def play(ep: dict) -> dict:
                 a = decider.decide(s).action  # round 2: go where the fine-tuned Laya itself goes
             else:
                 a = reader_choice(sc)
-            env.act(a)
+            env.act(a, back=backs(fs, a))
             p.note(a)
         out = env.outcome()
     finally:

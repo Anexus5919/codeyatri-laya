@@ -30,6 +30,7 @@ BLOCKED = 40.0            # a blocker closer than this means the move barely goe
 NEAR_UNSEEN = 384.0       # enemies out of view are mentioned only this close and in a clear straight line
 ITEM_RANGE = 640.0
 LOW_HEALTH = 60
+CLOSE = 160.0             # an enemy this close is shot while backing away
 STILL_DIST = 24.0
 STILL_WINDOW = 8
 
@@ -328,10 +329,31 @@ def _shoot(s: Scene) -> ActFact:
     if s.ammo <= 0:
         return ActFact("shoot", f"pulls the trigger of the empty {w}: nothing fires.", data={"hits": False})
     if e:
+        step = _step_away(s, e)
+        how = {"backward": ", and you back away from it as you fire",
+               "strafe_left": ", and with a wall behind you, you step left as you fire",
+               "strafe_right": ", and with a wall behind you, you step right as you fire"}.get(step or "", "")
         return ActFact("shoot", f"fires the {w} at the {e.name} in the crosshair, {round(e.dist)} units away: the shot "
-                                f"hits it. {s.ammo} rounds left.", data={"hits": True})
+                                f"hits it{how}. {s.ammo} rounds left.", data={"hits": True, "back": step})
     return ActFact("shoot", f"fires the {w} with no enemy in the crosshair: the shot hits nothing and wastes a round. "
                             f"{s.ammo} rounds left.", data={"hits": False})
+
+
+def _step_away(s: Scene, e: Enemy) -> str | None:
+    """Where a shot at a close enemy steps while it fires: straight back, or with a wall behind, sideways onto open
+    ground that holds no other enemy (a side-step keeps the crosshair on the target, a turn would not)."""
+    if e.dist >= CLOSE:
+        return None
+    if s.rays["backward"].dist >= BLOCKED * 2:
+        return "backward"
+
+    def clear(act: str) -> bool:
+        return s.rays[act].dist >= BLOCKED * 2 and not any(
+            o is not e and o.dist < 300 and abs((o.bearing - SIDE_ANGLE[act] + 540.0) % 360.0 - 180.0) < 60.0
+            for o in s.enemies)
+
+    sides = [a for a in ("strafe_left", "strafe_right") if clear(a)]
+    return max(sides, key=lambda a: s.rays[a].dist) if sides else None
 
 
 def _toward_frontier(s: Scene, act: str) -> bool:
@@ -423,6 +445,11 @@ def _use(s: Scene) -> ActFact:
                                   "a key or a switch.", data={"door": False})
         return ActFact("use", f"opens the closed door directly ahead, {round(hit.dist)} units away.", data={"door": True})
     return ActFact("use", "presses use, but nothing usable is within reach.", offered=False, data={"door": False})
+
+
+def backs(fs: dict[str, ActFact], action: str) -> str | None:
+    """The move a shot makes while it fires (an enemy close in front): backward, strafe_left, strafe_right or None."""
+    return fs["shoot"].data.get("back") if action == "shoot" else None
 
 
 def facts(s: Scene) -> dict[str, ActFact]:

@@ -59,6 +59,10 @@ REALTIME_BUTTONS = {a: list(v) for a, v in ACTION_BUTTONS.items()}
 for _a in ("turn_left", "turn_right", "turn_left_big", "turn_right_big", "turn_around"):
     REALTIME_BUTTONS[_a][_IDX[B.TURN_LEFT_RIGHT_DELTA]] *= HOLD_TICS
 REALTIME_TICS = {"shoot": 2, "use": 2}
+# Shooting an enemy at close range fires while backpedalling, or side-stepping when a wall is behind (the fact text
+# says which); a running player backs away about three times faster than a Demon closes in
+SHOOT_MOVE = {m: [max(a, b) for a, b in zip(ACTION_BUTTONS["shoot"], ACTION_BUTTONS[m])]
+              for m in ("backward", "strafe_left", "strafe_right")}
 
 VARIABLES = [GV.HEALTH, GV.ARMOR, GV.SELECTED_WEAPON, GV.SELECTED_WEAPON_AMMO, GV.KILLCOUNT, GV.ITEMCOUNT,
              GV.SECRETCOUNT, GV.DAMAGECOUNT, GV.DAMAGE_TAKEN, GV.HITCOUNT, GV.DEAD, GV.POSITION_X, GV.POSITION_Y,
@@ -131,11 +135,14 @@ class DoomEnv:
         width = st.screen_buffer.shape[1] if st.screen_buffer is not None else 320
         return Observation(st.tic, vals, list(st.labels), list(st.objects), list(st.sectors), screen, width)
 
-    def act(self, action: str) -> float:
+    def act(self, action: str, back: str | None = None) -> float:
+        step = back if action == "shoot" and back in SHOOT_MOVE else None
         if not self.realtime:
-            return self.game.make_action(ACTION_BUTTONS[action], HOLD_TICS)
-        reward = self.game.make_action(REALTIME_BUTTONS[action], REALTIME_TICS.get(action, 1))
-        if action not in MOVES:
+            return self.game.make_action(SHOOT_MOVE[step] if step else ACTION_BUTTONS[action], HOLD_TICS)
+        reward = self.game.make_action(SHOOT_MOVE[step] if step else REALTIME_BUTTONS[action], REALTIME_TICS.get(action, 1))
+        if step:
+            self.game.set_action(ACTION_BUTTONS[step])  # keep stepping away while the next decision is made
+        elif action not in MOVES:
             self.game.set_action(RELEASE)  # only a move carries on while the next decision is made
         return reward
 
