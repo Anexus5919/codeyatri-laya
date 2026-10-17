@@ -40,11 +40,16 @@ python -m laya_agent.arena.runner --game 2048 --model data\ft2048\ckpt_kaggle_fu
 ## 4. Doom (stage 3, fine-tuned Laya, our own engine)
 
 Doom is not on the arena; every Doom game runs in our own copy of the engine, and these commands save it as a real, judged run.
+The engine waits for each Laya decision (ViZDoom's standard synchronous mode), so every action is chosen on the screen it acts on;
+the window plays at about half speed. Every evaluation number comes from this setup.
 ```powershell
-# judged run on the first level: game window, real time, screens for the dashboard
-python -m laya_agent.doom.runner --scenario freedoom1:E1M1 --model data\ftdoom\ckpt_quick_frozen --frames --visible --realtime --minutes 3
+# judged run on level 2 (best evaluated level: 16 kills, alive after 3 minutes): game window, screens for the dashboard
+python -m laya_agent.doom.runner --scenario freedoom1:E1M2 --model data\ftdoom\ckpt_quick_frozen --frames --visible --minutes 3
+# the first level
+python -m laya_agent.doom.runner --scenario freedoom1:E1M1 --model data\ftdoom\ckpt_quick_frozen --frames --visible --minutes 3
 # combat showcase (monsters keep coming: aim and shoot)
-python -m laya_agent.doom.runner --scenario defend_the_line --model data\ftdoom\ckpt_quick_frozen --frames --visible --realtime --minutes 2
+python -m laya_agent.doom.runner --scenario defend_the_line --model data\ftdoom\ckpt_quick_frozen --frames --visible --minutes 2
+# real time (the game never waits for Laya): add --realtime. Laya then decides only every ~10 tics and scores far lower
 ```
 Adding `--runs runs_sim_doom` files a run as a test run instead (shown only by the practice dashboard).
 Other levels: `freedoom1:E1M2` to `E1M9`, `freedoom2:MAP01`; scenarios `defend_the_center`, `deadly_corridor`, `deathmatch`.
@@ -73,4 +78,4 @@ Doom proof in the dashboard: Audit tab, then "Replay the recording in the engine
 - Dashboard badge says "problems" right after a code change: restart the dashboard (Ctrl+C, run it again).
 - Doom feels slow: close extra Chrome tabs and other GPU work; the first Laya call is a warm-up.
 - A real arena run stops on a network drop: run the same command with `--resume <session_id>`.
-- Tests: `python -m pytest -q` (120 pass).
+- Tests: `python -m pytest -q` (118 pass).

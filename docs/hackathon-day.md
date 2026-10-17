@@ -5,7 +5,7 @@ Every real session is a permanent public record: never delete a log, never start
 
 ## 0. Before any real run
 
-- [ ] `.venv\Scripts\python -m pytest -q` passes (120 tests on 17 Oct).
+- [ ] `.venv\Scripts\python -m pytest -q` passes (118 tests on 17 Oct).
 - [ ] GPU in use: `.venv\Scripts\python -c "import torch;print(torch.cuda.is_available())"` prints True.
 - [ ] `runs/` is empty or contains only real sessions. Simulator output lives in `runs_sim*/`, never in `runs/`.
 - [ ] Mentor questions asked (section 4) and answers written into `docs/decisions.md`.
@@ -93,8 +93,8 @@ Design rules are in `docs/decisions.md`.
 .venv\Scripts\activate
 # terminal 1: dashboard (Doom tab at http://127.0.0.1:8770)
 python -m laya_agent.viewer.arena_web runs --port 8770 --sim-roots "runs_sim*"
-# terminal 2: a judged episode (game window visible, real time, frames for the dashboard)
-python -m laya_agent.doom.runner --scenario freedoom1:E1M1 --model data\ftdoom\ckpt_quick_frozen --realtime --visible --frames
+# terminal 2: a judged episode (game window visible, the engine waits for each decision, frames for the dashboard)
+python -m laya_agent.doom.runner --scenario freedoom1:E1M2 --model data\ftdoom\ckpt_quick_frozen --visible --frames --minutes 3
 ```
 - Checkpoint: `ckpt_quick_frozen` won E15 (196 kills on the 11-game suite). For a full level where exploring matters most, `ckpt_full_frozen` explored further (E1M1 128 areas, MAP01 96).
 - A run made without `--frames` can get its screens back from the recording: `python -m laya_agent.doom.frames runs\doom\<session>.jsonl`.
