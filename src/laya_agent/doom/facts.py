@@ -329,31 +329,40 @@ def _shoot(s: Scene) -> ActFact:
     if s.ammo <= 0:
         return ActFact("shoot", f"pulls the trigger of the empty {w}: nothing fires.", data={"hits": False})
     if e:
-        step = _step_away(s, e)
-        how = {"backward": ", and you back away from it as you fire",
-               "strafe_left": ", and with a wall behind you, you step left as you fire",
-               "strafe_right": ", and with a wall behind you, you step right as you fire"}.get(step or "", "")
+        away = _step_away(s)
+        step, how = None, ""
+        if away:
+            step, c = away
+            who = "it" if c is e else f"the {c.name} {round(c.dist)} units away"
+            how = {"backward": f", and you back away from {who} as you fire",
+                   "strafe_left": f", and you step left, away from {who}, as you fire",
+                   "strafe_right": f", and you step right, away from {who}, as you fire"}[step]
         return ActFact("shoot", f"fires the {w} at the {e.name} in the crosshair, {round(e.dist)} units away: the shot "
                                 f"hits it{how}. {s.ammo} rounds left.", data={"hits": True, "back": step})
     return ActFact("shoot", f"fires the {w} with no enemy in the crosshair: the shot hits nothing and wastes a round. "
                             f"{s.ammo} rounds left.", data={"hits": False})
 
 
-def _step_away(s: Scene, e: Enemy) -> str | None:
-    """Where a shot at a close enemy steps while it fires: straight back, or with a wall behind, sideways onto open
-    ground that holds no other enemy (a side-step keeps the crosshair on the target, a turn would not)."""
-    if e.dist >= CLOSE:
+def _step_away(s: Scene) -> tuple[str, Enemy] | None:
+    """Where a shot steps while it fires when an enemy is close (in view or not): straight back if that leads away
+    from it, otherwise sideways onto open ground away from it that holds no other enemy (a side-step keeps the
+    crosshair on the target, a turn would not)."""
+    near = [o for o in s.enemies if o.dist < CLOSE]
+    if not near:
         return None
-    if s.rays["backward"].dist >= BLOCKED * 2:
-        return "backward"
+    c = min(near, key=lambda o: o.dist)
+
+    def off(act: str, o: Enemy) -> float:  # degrees between this move's direction and the enemy (180 is straight away)
+        return abs((o.bearing - SIDE_ANGLE[act] + 540.0) % 360.0 - 180.0)
 
     def clear(act: str) -> bool:
-        return s.rays[act].dist >= BLOCKED * 2 and not any(
-            o is not e and o.dist < 300 and abs((o.bearing - SIDE_ANGLE[act] + 540.0) % 360.0 - 180.0) < 60.0
-            for o in s.enemies)
+        return s.rays[act].dist >= BLOCKED * 2 and off(act, c) >= 90.0 and not any(
+            o is not c and o.dist < 300 and off(act, o) < 60.0 for o in s.enemies)
 
-    sides = [a for a in ("strafe_left", "strafe_right") if clear(a)]
-    return max(sides, key=lambda a: s.rays[a].dist) if sides else None
+    moves = [a for a in ("backward", "strafe_left", "strafe_right") if clear(a)]
+    if not moves:
+        return None
+    return max(moves, key=lambda a: (a == "backward", off(a, c), s.rays[a].dist)), c
 
 
 def _toward_frontier(s: Scene, act: str) -> bool:

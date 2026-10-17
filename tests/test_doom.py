@@ -76,6 +76,9 @@ def test_a_close_shot_backs_away_or_side_steps_a_wall_behind():
     assert backs(facts(s), "shoot") == "strafe_left"   # never steps toward another enemy
     assert backs(facts(s), "forward") is None
     assert backs(facts(scene(enemies=[Enemy(1, "Imp", 300.0, 1.0, True, True)])), "shoot") is None  # far: stand and fire
+    # aiming at a far Imp while another claws from the side: back away from the close one
+    s = scene(enemies=[Enemy(1, "Imp", 724.0, 0.0, True, True), Enemy(2, "Imp", 54.0, 52.0, True, False)])
+    assert backs(facts(s), "shoot") == "backward" and "the Imp 54 units away" in facts(s)["shoot"].text
 
 
 def test_firing_at_nothing_is_described_as_waste_and_never_chosen():
