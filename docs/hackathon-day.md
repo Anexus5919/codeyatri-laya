@@ -90,11 +90,13 @@ Design rules are in `docs/decisions.md`.
 
 ```powershell
 .venv\Scripts\activate
-# terminal 1: dashboard (Doom page at http://127.0.0.1:8770/doom)
+# terminal 1: dashboard (Doom tab at http://127.0.0.1:8770)
 python -m laya_agent.viewer.arena_web runs --port 8770 --sim-roots "runs_sim*"
 # terminal 2: a judged episode (game window visible, real time, frames for the dashboard)
-python -m laya_agent.doom.runner --scenario freedoom1:E1M1 --model data\ftdoom\ckpt_doom_frozen --realtime --visible --frames
+python -m laya_agent.doom.runner --scenario freedoom1:E1M1 --model data\ftdoom\ckpt_quick_frozen --realtime --visible --frames
 ```
+- Checkpoint: `ckpt_quick_frozen` won E15 (196 kills on the 11-game suite). For a full level where exploring matters most, `ckpt_full_frozen` explored further (E1M1 128 areas, MAP01 96).
+- A run made without `--frames` can get its screens back from the recording: `python -m laya_agent.doom.frames runs\doom\<session>.jsonl`.
 - `--scenario` takes `freedoom1:E1M1` to `E1M9`, `freedoom2:MAP01` and up, or a ViZDoom scenario (`defend_the_center`, `deadly_corridor`, `deathmatch`).
 - `--skill 1..5` sets the difficulty (default 3), `--minutes` the time limit (default 10).
 - Before judging: nothing else on the GPU; the first Laya call is a warm-up and is not timed.
