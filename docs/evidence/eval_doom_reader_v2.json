@@ -1,0 +1,220 @@
+{
+ "policy": "reader",
+ "model": "english",
+ "summary": {
+  "defend_the_center": {
+   "games": 3,
+   "kills_mean": 22,
+   "exited": 0,
+   "died": 3,
+   "explored_mean": 107.7
+  },
+  "defend_the_line": {
+   "games": 2,
+   "kills_mean": 28.5,
+   "exited": 0,
+   "died": 2,
+   "explored_mean": 12
+  },
+  "deadly_corridor": {
+   "games": 3,
+   "kills_mean": 5,
+   "exited": 2,
+   "died": 1,
+   "explored_mean": 20
+  },
+  "freedoom1:E1M1": {
+   "games": 1,
+   "kills_mean": 8,
+   "exited": 0,
+   "died": 1,
+   "explored_mean": 119
+  },
+  "freedoom1:E1M2": {
+   "games": 1,
+   "kills_mean": 11,
+   "exited": 0,
+   "died": 1,
+   "explored_mean": 56
+  },
+  "freedoom2:MAP01": {
+   "games": 1,
+   "kills_mean": 6,
+   "exited": 0,
+   "died": 1,
+   "explored_mean": 42
+  },
+  "all": {
+   "kills_total": 163,
+   "exited": 2,
+   "died": 9
+  }
+ },
+ "rows": [
+  {
+   "scenario": "defend_the_center",
+   "seed": 11,
+   "kills": 24,
+   "items": 0,
+   "secrets": 0,
+   "health": -8,
+   "dead": true,
+   "exited": false,
+   "steps": 326,
+   "explored_cells": 119,
+   "log_verified": null,
+   "session_id": null,
+   "seconds": 8.8
+  },
+  {
+   "scenario": "defend_the_center",
+   "seed": 12,
+   "kills": 21,
+   "items": 0,
+   "secrets": 0,
+   "health": -2,
+   "dead": true,
+   "exited": false,
+   "steps": 335,
+   "explored_cells": 114,
+   "log_verified": null,
+   "session_id": null,
+   "seconds": 5.1
+  },
+  {
+   "scenario": "defend_the_center",
+   "seed": 13,
+   "kills": 21,
+   "items": 0,
+   "secrets": 0,
+   "health": -16,
+   "dead": true,
+   "exited": false,
+   "steps": 293,
+   "explored_cells": 90,
+   "log_verified": null,
+   "session_id": null,
+   "seconds": 6.6
+  },
+  {
+   "scenario": "defend_the_line",
+   "seed": 11,
+   "kills": 33,
+   "items": 0,
+   "secrets": 0,
+   "health": 0,
+   "dead": true,
+   "exited": false,
+   "steps": 236,
+   "explored_cells": 16,
+   "log_verified": null,
+   "session_id": null,
+   "seconds": 4.9
+  },
+  {
+   "scenario": "defend_the_line",
+   "seed": 12,
+   "kills": 24,
+   "items": 0,
+   "secrets": 0,
+   "health": -1,
+   "dead": true,
+   "exited": false,
+   "steps": 165,
+   "explored_cells": 8,
+   "log_verified": null,
+   "session_id": null,
+   "seconds": 2.5
+  },
+  {
+   "scenario": "deadly_corridor",
+   "seed": 11,
+   "kills": 6,
+   "items": 0,
+   "secrets": 0,
+   "health": 100,
+   "dead": false,
+   "exited": true,
+   "steps": 54,
+   "explored_cells": 24,
+   "log_verified": null,
+   "session_id": null,
+   "seconds": 4.6
+  },
+  {
+   "scenario": "deadly_corridor",
+   "seed": 12,
+   "kills": 6,
+   "items": 0,
+   "secrets": 0,
+   "health": 100,
+   "dead": false,
+   "exited": true,
+   "steps": 53,
+   "explored_cells": 24,
+   "log_verified": null,
+   "session_id": null,
+   "seconds": 3.9
+  },
+  {
+   "scenario": "deadly_corridor",
+   "seed": 13,
+   "kills": 3,
+   "items": 0,
+   "secrets": 0,
+   "health": -2,
+   "dead": true,
+   "exited": false,
+   "steps": 35,
+   "explored_cells": 12,
+   "log_verified": null,
+   "session_id": null,
+   "seconds": 2.7
+  },
+  {
+   "scenario": "freedoom1:E1M1",
+   "seed": 11,
+   "kills": 8,
+   "items": 8,
+   "secrets": 0,
+   "health": -2,
+   "dead": true,
+   "exited": false,
+   "steps": 663,
+   "explored_cells": 119,
+   "log_verified": null,
+   "session_id": null,
+   "seconds": 40.0
+  },
+  {
+   "scenario": "freedoom1:E1M2",
+   "seed": 11,
+   "kills": 11,
+   "items": 2,
+   "secrets": 0,
+   "health": -37,
+   "dead": true,
+   "exited": false,
+   "steps": 305,
+   "explored_cells": 56,
+   "log_verified": null,
+   "session_id": null,
+   "seconds": 30.8
+  },
+  {
+   "scenario": "freedoom2:MAP01",
+   "seed": 11,
+   "kills": 6,
+   "items": 3,
+   "secrets": 0,
+   "health": -9,
+   "dead": true,
+   "exited": false,
+   "steps": 184,
+   "explored_cells": 42,
+   "log_verified": null,
+   "session_id": null,
+   "seconds": 13.0
+  }
+ ]
+}

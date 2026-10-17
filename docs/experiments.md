@@ -220,3 +220,18 @@ Chance (uniform over legal moves): 0.526.
 
 - Interpretation: fine-tuning turned Laya from near random into a player that beats the reader that labelled its data on combat (more kills in both defend scenarios, MAP01 explored furthest), while every action is still Laya's own answer (0 fallback). The reader still explores E1M1 and E1M2 more widely.
 - Evidence: `docs/evidence/eval_doom_{random,base,reader,quick}.json`; logs and demo recordings in `runs_sim_doom_eval/` (local).
+
+## E15: Doom, quick vs full vs round 2 (engine, same 11 games, code as of 17 Oct morning)
+
+- Re-run of every model under the same code: no chainsaw auto-switch, crosshair by collision radius, turn-around action and all-round scan for unexplored ground (only round 2 is asked about turn-around).
+- Full (`codeyatri-laya-doom-full`, all 7,120 rows, 3 epochs, 185 minutes): held-out agreement 0.587 to 0.953. Round 2 (`codeyatri-laya-doom-r2`, 9,000 rows from reader and quick-Laya games, 11 actions, 2 epochs, 151 minutes): 0.599 to 0.963.
+
+| policy | total kills | deadly_corridor cleared | deaths | E1M1 kills / areas | E1M2 kills / areas | MAP01 kills / areas |
+|---|---|---|---|---|---|---|
+| rule reader (labels) | 163 | 2 of 3 | 9 | 8 / 119 | 11 / 56 | 6 / 42 |
+| **quick** | **196** | **3 of 3** | **6** | 8 / 119 | **16 / 89** | 2 / 37 |
+| full | 162 | 2 of 3 | 7 | 8 / **128** | 9 / 49 | **8 / 96** |
+| round 2 | 178 | 3 of 3 | 6 | 8 / 109 | 7 / 43 | 2 / 38 |
+
+- Decision: the quick checkpoint (`data/ftdoom/ckpt_quick_frozen`) plays judged Doom runs. The full checkpoint explores the full levels further (E1M1, MAP01) and is the alternative if the judged level is a full map; round 2's turn-around did not pay off yet.
+- Evidence: `docs/evidence/eval_doom_{reader_v2,quick_v2,full,r2}.json`.
